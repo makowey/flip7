@@ -299,6 +299,98 @@
             }
         }
         
+        /* Game rules modal dark theme improvements */
+        .dark #rules-modal .bg-white {
+            background-color: var(--bg-secondary) !important;
+            color: var(--text-primary) !important;
+        }
+        
+        .dark #rules-content {
+            color: var(--text-primary) !important;
+        }
+        
+        /* Section backgrounds with better contrast */
+        .dark #rules-content .bg-blue-50 {
+            background-color: #1e3a8a !important; /* Dark blue */
+        }
+        
+        .dark #rules-content .bg-green-50 {
+            background-color: #14532d !important; /* Dark green */
+        }
+        
+        .dark #rules-content .bg-teal-50 {
+            background-color: #134e4a !important; /* Dark teal */
+        }
+        
+        .dark #rules-content .bg-red-50 {
+            background-color: #7f1d1d !important; /* Dark red */
+        }
+        
+        .dark #rules-content .bg-purple-50 {
+            background-color: #581c87 !important; /* Dark purple */
+        }
+        
+        .dark #rules-content .bg-orange-50 {
+            background-color: #9a3412 !important; /* Dark orange */
+        }
+        
+        .dark #rules-content .bg-indigo-50 {
+            background-color: #312e81 !important; /* Dark indigo */
+        }
+        
+        .dark #rules-content .bg-yellow-50 {
+            background-color: #713f12 !important; /* Dark yellow */
+        }
+        
+        .dark #rules-content .bg-gray-50 {
+            background-color: var(--bg-tertiary) !important; /* Consistent gray */
+        }
+        
+        /* Text colors with better contrast */
+        .dark #rules-content .text-blue-800 {
+            color: #93c5fd !important; /* Light blue */
+        }
+        
+        .dark #rules-content .text-green-800 {
+            color: #86efac !important; /* Light green */
+        }
+        
+        .dark #rules-content .text-teal-800 {
+            color: #5eead4 !important; /* Light teal */
+        }
+        
+        .dark #rules-content .text-red-800 {
+            color: #fca5a5 !important; /* Light red */
+        }
+        
+        .dark #rules-content .text-purple-800 {
+            color: #c4b5fd !important; /* Light purple */
+        }
+        
+        .dark #rules-content .text-orange-800 {
+            color: #fed7aa !important; /* Light orange */
+        }
+        
+        .dark #rules-content .text-indigo-800 {
+            color: #a5b4fc !important; /* Light indigo */
+        }
+        
+        .dark #rules-content .text-yellow-800 {
+            color: #fde047 !important; /* Light yellow */
+        }
+        
+        .dark #rules-content .text-gray-700,
+        .dark #rules-content .text-gray-600,
+        .dark #rules-content .text-gray-800 {
+            color: var(--text-primary) !important; /* Consistent text */
+        }
+        
+        /* Font weights for better readability */
+        .dark #rules-content .font-bold,
+        .dark #rules-content .font-semibold {
+            font-weight: 600; /* Slightly lighter for better readability on dark */
+        }
+        
         .card {
             width: 80px;
             height: 120px;
@@ -639,24 +731,28 @@
     <div class="container mx-auto p-4">
         <header class="text-center mb-4 md:mb-8 relative">
             <!-- Theme Toggle and Settings -->
-            <div class="absolute top-0 right-0 flex space-x-2">
-                <button id="new-game" class="hidden p-2 rounded-lg bg-gray-500 hover:bg-gray-600 text-white border-2 border-gray-600 hover:border-gray-700 transition-all shadow-sm text-sm font-medium" title="Start new game">
+            <div class="absolute top-0 right-0 md:flex space-x-2 hidden">
+                <!-- Desktop buttons -->
+                <button id="new-game-desktop" class="hidden p-2 rounded-lg bg-gray-500 hover:bg-gray-600 text-white border-2 border-gray-600 hover:border-gray-700 transition-all shadow-sm text-sm font-medium" title="Start new game">
                     <i class="fas fa-home mr-1"></i>
                     New Game
                 </button>
-                <button id="sound-toggle" class="p-3 rounded-lg bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm" title="Toggle sounds">
+                <button id="sound-toggle-desktop" class="p-3 rounded-lg bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm" title="Toggle sounds">
                     <i class="fas fa-volume-up text-gray-700 dark:text-gray-300 text-lg"></i>
                     <i class="fas fa-volume-mute hidden text-red-500 text-lg"></i>
                 </button>
-                <button id="rules-button" class="p-3 rounded-lg bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm" title="View game rules">
+                <button id="rules-button-desktop" class="p-3 rounded-lg bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm" title="View game rules">
                     <i class="fas fa-book text-gray-700 dark:text-gray-300 text-lg"></i>
                 </button>
-                <button id="theme-toggle" class="p-3 rounded-lg bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm" title="Toggle theme">
+                <button id="theme-toggle-desktop" class="p-3 rounded-lg bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm" title="Toggle theme">
                     <i class="fas fa-moon dark:hidden text-gray-700 text-lg"></i>
                     <i class="fas fa-sun hidden dark:inline text-yellow-400 text-lg"></i>
                 </button>
-                <button id="stats-button" class="p-3 rounded-lg bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm" title="View statistics">
+                <button id="stats-button-desktop" class="p-3 rounded-lg bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm" title="View statistics">
                     <i class="fas fa-chart-bar text-gray-700 dark:text-gray-300 text-lg"></i>
+                </button>
+                <button id="youtube-button-desktop" class="p-3 rounded-lg bg-red-600 hover:bg-red-700 border-2 border-red-700 hover:border-red-800 transition-all shadow-sm" title="Watch Flip7 tutorial on YouTube" onclick="window.open('https://www.youtube.com/watch?v=kOrwfiQLK_I', '_blank')">
+                    <i class="fab fa-youtube text-white text-lg"></i>
                 </button>
             </div>
             
@@ -667,6 +763,31 @@
             </h1>
             <p class="tagline text-center">May the cards flip in your favor!</p>
             <p class="text-gray-600 text-base md:text-lg font-medium px-4">Press your luck card game - Get 7 unique cards or bust!</p>
+            
+            <!-- Mobile buttons - positioned below description -->
+            <div class="flex md:hidden justify-center space-x-1 mt-4 flex-wrap gap-2">
+                <button id="sound-toggle" class="p-2 rounded-lg bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm" title="Toggle sounds">
+                    <i class="fas fa-volume-up text-gray-700 dark:text-gray-300"></i>
+                    <i class="fas fa-volume-mute hidden text-red-500"></i>
+                </button>
+                <button id="rules-button" class="p-2 rounded-lg bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm" title="View game rules">
+                    <i class="fas fa-book text-gray-700 dark:text-gray-300"></i>
+                </button>
+                <button id="theme-toggle" class="p-2 rounded-lg bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm" title="Toggle theme">
+                    <i class="fas fa-moon dark:hidden text-gray-700"></i>
+                    <i class="fas fa-sun hidden dark:inline text-yellow-400"></i>
+                </button>
+                <button id="stats-button" class="p-2 rounded-lg bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm" title="View statistics">
+                    <i class="fas fa-chart-bar text-gray-700 dark:text-gray-300"></i>
+                </button>
+                <button id="youtube-button" class="p-2 rounded-lg bg-red-600 hover:bg-red-700 border-2 border-red-700 hover:border-red-800 transition-all shadow-sm" title="Watch Flip7 tutorial on YouTube" onclick="window.open('https://www.youtube.com/watch?v=kOrwfiQLK_I', '_blank')">
+                    <i class="fab fa-youtube text-white"></i>
+                </button>
+                <button id="new-game" class="hidden p-2 rounded-lg bg-gray-500 hover:bg-gray-600 text-white border-2 border-gray-600 hover:border-gray-700 transition-all shadow-sm text-sm font-medium" title="Start new game">
+                    <i class="fas fa-home mr-1"></i>
+                    New Game
+                </button>
+            </div>
         </header>
 
         <!-- Game Setup Screen -->

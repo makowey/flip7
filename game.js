@@ -13,6 +13,7 @@ class Flip7Game {
         this.extraActionCards = []; // Cards that need redistribution
         this.waitingForActionCardResolution = false; // Waiting for player to select action card target
         this.isInitialDeal = false; // Flag to prevent turn progression during initial deal
+        this.processingCard = false; // Mutex to prevent overlapping card processing
         this.currentGameStats = {
             startTime: null,
             endTime: null,
@@ -630,6 +631,7 @@ class Flip7Game {
             player.cards = [];
             player.score = 0;
             player.status = 'active';
+            player.frozen = false;
         });
         
         // Clear visual cards and restore card opacity for all players
@@ -727,29 +729,42 @@ class Flip7Game {
         const currentScore = player.score;
         const cardsLeft = this.deck.length;
         
+        // Check for high-value cards (9-12)
+        const highValueCards = numberCards.filter(c => c.value >= 9 && c.value <= 12);
+        const hasMultipleHighValue = highValueCards.length >= 4;
+        
         // AI decision based on difficulty and game state
         const riskTolerance = this.getAIRiskTolerance(player);
         const bustProbability = this.calculateBustProbability(player);
         
-        // AI is more likely to stay if:
-        // - High bust probability
-        // - Good current score
-        // - Close to Flip 7 but risky
-        // - Low risk tolerance
+        // VERY CONSERVATIVE: If AI has 4+ high-value cards (9-12), be extremely cautious
+        if (hasMultipleHighValue) {
+            this.addToGameLog(`🤖 AI has ${highValueCards.length} high-value cards (9-12), being very conservative`, 'info');
+            return 'stay';
+        }
         
+        // CONSERVATIVE: If score is 40+, protect the score
+        if (currentScore >= 40) {
+            this.addToGameLog(`🤖 AI has high score (${currentScore}), protecting points`, 'info');
+            return 'stay';
+        }
+        
+        // MODERATE CONSERVATIVE: If score is 30+ and bust probability is significant
+        if (currentScore >= 30 && bustProbability > riskTolerance * 0.6) {
+            this.addToGameLog(`🤖 AI protecting decent score (${currentScore}) with bust risk ${Math.round(bustProbability * 100)}%`, 'info');
+            return 'stay';
+        }
+        
+        // Standard bust probability check
         if (bustProbability > riskTolerance) {
             return 'stay';
         }
         
+        // Close to Flip 7 - more conservative
         if (uniqueNumbers.length >= 6) {
-            // Close to Flip 7 - more conservative
             if (bustProbability > riskTolerance * 0.7) {
                 return 'stay';
             }
-        }
-        
-        if (currentScore >= 30 && bustProbability > riskTolerance * 0.8) {
-            return 'stay';
         }
         
         return 'hit';
@@ -837,15 +852,26 @@ class Flip7Game {
         this.animateCardToDealerArea(playerId, card, () => {
             this.addToGameLog(`🎯 Animation callback triggered for ${this.players.find(p => p.id === playerId).name}`, 'info');
             
+            // Prevent overlapping card processing
+            if (this.processingCard) {
+                this.addToGameLog(`🚫 Card processing already in progress, skipping callback`, 'warning');
+                return;
+            }
+            this.processingCard = true;
+            
             this.renderPlayerCards(playerId, true); // Skip animation since we just did the flying effect
             this.calculatePlayerScore(playerId);
             this.processCardEffects(playerId, card);
             
             // Check if action card should be handled (only if player didn't bust)
             const player = this.players.find(p => p.id === playerId);
+            this.addToGameLog(`🎴 Action card check: type=${card.type}, playerStatus=${player.status}, roundState=${this.roundState}`, 'info');
+            
             if (card.type === 'action' && player.status === 'active' && this.roundState === 'playing') {
+                this.addToGameLog(`⚡ Processing action card: ${card.value} for ${player.name}`, 'info');
                 this.waitingForActionCardResolution = true;
                 this.handleActionCard(playerId, card);
+                this.processingCard = false; // Reset mutex
                 return; // Don't continue turn progression yet
             }
             
@@ -857,6 +883,8 @@ class Flip7Game {
             } else {
                 this.addToGameLog(`🚫 Skipping turn progression during initial deal`, 'info');
             }
+            
+            this.processingCard = false; // Reset mutex
         });
     }
     
@@ -999,15 +1027,20 @@ class Flip7Game {
                 const duplicateCardIndex = player.cards.findIndex(c => c.type === 'number' && c.value === duplicateValue);
                 const secondChanceIndex = player.cards.findIndex(c => c.type === 'action' && c.value === 'second_chance');
                 
+                let removedCards = [];
                 if (duplicateCardIndex !== -1) {
-                    this.discardPile.push(player.cards.splice(duplicateCardIndex, 1)[0]);
+                    const removedCard = player.cards.splice(duplicateCardIndex, 1)[0];
+                    this.discardPile.push(removedCard);
+                    removedCards.push(`${removedCard.value} (duplicate)`);
                 }
                 if (secondChanceIndex !== -1) {
-                    this.discardPile.push(player.cards.splice(secondChanceIndex, 1)[0]);
+                    const removedCard = player.cards.splice(secondChanceIndex, 1)[0];
+                    this.discardPile.push(removedCard);
+                    removedCards.push('SECOND CHANCE (action card)');
                 }
                 
                 this.updatePlayerStatus(playerId, 'Second Chance Used! 🛡️');
-                this.addToGameLog(`${player.name} used SECOND CHANCE to avoid bust!`, 'action');
+                this.addToGameLog(`${player.name} used SECOND CHANCE to avoid bust! Removed: ${removedCards.join(', ')}`, 'action');
                 this.renderPlayerCards(playerId);
                 this.calculatePlayerScore(playerId);
                 this.updateCardsRemaining();
@@ -1298,6 +1331,7 @@ class Flip7Game {
         switch (card.value) {
             case 'freeze':
                 targetPlayer.status = 'stayed';
+                targetPlayer.frozen = true; // Mark as frozen for scoring
                 if (sourcePlayerId === targetId) {
                     this.updatePlayerStatus(targetId, 'FROZEN! ❄️');
                     this.addToGameLog(`${targetPlayer.name} used FREEZE on themselves`, 'action');
@@ -1468,6 +1502,7 @@ class Flip7Game {
                 // After animation completes, update status messages
                 this.updatePlayerStatus(currentPlayerId, `Second Chance given to ${targetPlayer.name}! 🎁`);
                 this.updatePlayerStatus(targetPlayer.id, 'Received Second Chance! 🛡️');
+                this.addToGameLog(`${this.players.find(p => p.id === currentPlayerId).name} gave SECOND CHANCE to ${targetPlayer.name}`, 'action');
                 
                 // Clear waiting state and progress turn
                 this.waitingForActionCardResolution = false;
@@ -1487,6 +1522,7 @@ class Flip7Game {
             }
             this.discardPile.push(card);
             this.updatePlayerStatus(currentPlayerId, 'Second Chance discarded - no eligible players! 🗑️');
+            this.addToGameLog(`${this.players.find(p => p.id === currentPlayerId).name} discarded SECOND CHANCE - no eligible players`, 'action');
             this.renderPlayerCards(currentPlayerId, true);
             this.calculatePlayerScore(currentPlayerId);
             this.updateCardsRemaining();
@@ -1591,11 +1627,20 @@ class Flip7Game {
     }
     
     hitPlayer() {
+        // Prevent rapid consecutive hits
+        if (this.processingCard) {
+            this.addToGameLog(`🚫 Card already being processed, ignoring HIT button`, 'warning');
+            return;
+        }
+        
         const currentPlayer = this.players[this.currentPlayerIndex];
         if (currentPlayer.status !== 'active') {
             this.findNextActivePlayer();
             return;
         }
+        
+        // Disable action buttons immediately
+        this.disableActionButtons();
         
         // Log hit action
         if (currentPlayer.isAI) {
@@ -1638,16 +1683,20 @@ class Flip7Game {
         if (this.flipThreeActive) {
             // Someone is in Flip Three - set turn to that player and don't change turns
             this.currentPlayerIndex = this.players.findIndex(p => p.id === this.flipThreeActive.playerId);
+            this.addToGameLog(`🎲 Flip Three active - turn stays with ${this.players[this.currentPlayerIndex].name}`, 'info');
             this.checkAITurn();
         } else {
             // Normal turn progression - move to next player
             const previousPlayer = this.players[this.currentPlayerIndex];
+            this.addToGameLog(`🔄 Finding next active player from ${previousPlayer.name}`, 'info');
             this.findNextActivePlayer();
             const newPlayer = this.players[this.currentPlayerIndex];
             
             // Log turn progression for debugging
             if (previousPlayer.id !== newPlayer.id) {
                 this.addToGameLog(`Turn switches from ${previousPlayer.name} to ${newPlayer.name}`, 'info');
+            } else {
+                this.addToGameLog(`🔁 Turn stays with ${newPlayer.name} (only active player)`, 'info');
             }
             
             this.checkAITurn();
@@ -1762,6 +1811,9 @@ class Flip7Game {
     }
     
     stayPlayer() {
+        // Disable action buttons immediately
+        this.disableActionButtons();
+        
         const currentPlayer = this.players[this.currentPlayerIndex];
         if (currentPlayer.status === 'active') {
             currentPlayer.status = 'stayed';
@@ -2109,6 +2161,12 @@ class Flip7Game {
         if (this.roundState === 'playing') {
             this.hitPlayer();
         }
+    }
+    
+    disableActionButtons() {
+        $('#hit-button').prop('disabled', true).addClass('opacity-50 cursor-not-allowed').removeClass('hover:bg-green-600');
+        $('#stay-button').prop('disabled', true).addClass('opacity-50 cursor-not-allowed').removeClass('hover:bg-red-600');
+        $('#flip-three-continue').prop('disabled', true).addClass('opacity-50 cursor-not-allowed').removeClass('hover:bg-red-600');
     }
     
     closeActionModal() {
