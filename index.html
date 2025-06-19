@@ -289,15 +289,15 @@
         }
         
         /* Score panel dark theme support */
-        .dark #score-panel {
+        .dark #score-panel-mobile {
             background-color: var(--bg-secondary) !important;
         }
         
-        .dark #score-panel h3 {
+        .dark #score-panel-mobile h3 {
             color: var(--text-primary) !important;
         }
         
-        .dark #score-panel .text-gray-600 {
+        .dark #score-panel-mobile .text-gray-600 {
             color: var(--text-secondary) !important;
         }
         
@@ -850,18 +850,18 @@
 
         <!-- Game Screen -->
         <div id="game-screen" class="hidden">
-            <!-- Real-time Score Panel -->
-            <div id="score-panel" class="bg-white rounded-lg shadow-lg p-3 md:p-4 mb-4">
+            <!-- Mobile-only Score Panel -->
+            <div id="score-panel-mobile" class="md:hidden bg-white rounded-lg shadow-lg p-3 mb-4">
                 <div class="flex items-center justify-between mb-2">
                     <h3 class="text-lg font-bold text-gray-800">
                         <i class="fas fa-chart-line text-green-600 mr-2"></i>
                         Live Scores
                     </h3>
                     <div class="text-sm text-gray-600">
-                        Target: <span id="score-panel-target" class="font-semibold text-purple-600">200</span>
+                        Target: <span id="score-panel-target-mobile" class="font-semibold text-purple-600">200</span>
                     </div>
                 </div>
-                <div id="score-panel-players" class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+                <div id="score-panel-players-mobile" class="grid grid-cols-2 gap-2">
                     <!-- Player scores will be dynamically generated -->
                 </div>
             </div>
@@ -921,22 +921,40 @@
                     </div>
                 </div>
                 
-                <!-- Desktop Layout -->
-                <div class="hidden md:flex justify-between items-center mb-4">
-                    <!-- Left: Round & Dealer Info -->
-                    <div>
-                        <h3 class="text-lg font-bold">
-                            <i class="fas fa-trophy text-yellow-500 mr-2"></i>
-                            Round <span id="current-round">1</span>
-                        </h3>
-                        <p class="text-sm text-gray-600">
-                            <i class="fas fa-user-tie text-blue-500 mr-2"></i>
-                            Dealer: <span id="current-dealer">Player 1</span>
-                        </p>
+                <!-- Desktop Layout with Integrated Live Scores -->
+                <div class="hidden md:block">
+                    <!-- Top Row: Live Scores -->
+                    <div class="mb-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-lg font-bold text-gray-800">
+                                <i class="fas fa-chart-line text-green-600 mr-2"></i>
+                                Live Scores
+                            </h3>
+                            <div class="text-sm text-gray-600">
+                                Target: <span id="score-panel-target" class="font-semibold text-purple-600">200</span>
+                            </div>
+                        </div>
+                        <div id="score-panel-players" class="grid grid-cols-4 gap-3">
+                            <!-- Player scores will be dynamically generated -->
+                        </div>
                     </div>
                     
-                    <!-- Center: Card Piles & Current Turn -->
-                    <div class="flex items-center space-x-8">
+                    <!-- Bottom Row: Game Status -->
+                    <div class="flex justify-between items-center">
+                        <!-- Left: Round & Dealer Info -->
+                        <div>
+                            <h3 class="text-lg font-bold">
+                                <i class="fas fa-trophy text-yellow-500 mr-2"></i>
+                                Round <span id="current-round">1</span>
+                            </h3>
+                            <p class="text-sm text-gray-600">
+                                <i class="fas fa-user-tie text-blue-500 mr-2"></i>
+                                Dealer: <span id="current-dealer">Player 1</span>
+                            </p>
+                        </div>
+                        
+                        <!-- Center: Card Piles & Current Turn -->
+                        <div class="flex items-center space-x-8">
                         <!-- Card Piles -->
                         <div class="flex items-center space-x-4">
                             <div class="text-center">
@@ -973,16 +991,17 @@
                         </div>
                     </div>
                     
-                    <!-- Right: Game Info -->
-                    <div class="text-right">
-                        <p class="text-sm text-gray-600">
-                            <i class="fas fa-bullseye text-purple-500 mr-1"></i>
-                            Target: <span id="display-target-score" class="font-semibold">200</span>
-                        </p>
-                        <p class="text-sm text-gray-600">
-                            <i class="fas fa-stack text-blue-500 mr-1"></i>
-                            Deck: <span id="cards-remaining" class="font-semibold">94</span>
-                        </p>
+                        <!-- Right: Game Info -->
+                        <div class="text-right">
+                            <p class="text-sm text-gray-600">
+                                <i class="fas fa-bullseye text-purple-500 mr-1"></i>
+                                Target: <span id="display-target-score" class="font-semibold">200</span>
+                            </p>
+                            <p class="text-sm text-gray-600">
+                                <i class="fas fa-stack text-blue-500 mr-1"></i>
+                                Deck: <span id="cards-remaining" class="font-semibold">94</span>
+                            </p>
+                        </div>
                     </div>
                 </div>
                 

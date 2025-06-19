@@ -682,11 +682,16 @@ class Flip7Game {
     }
     
     setupScorePanel() {
-        const container = $('#score-panel-players');
-        container.empty();
+        // Setup both desktop and mobile score panels
+        const desktopContainer = $('#score-panel-players');
+        const mobileContainer = $('#score-panel-players-mobile');
         
-        // Update target score display
+        desktopContainer.empty();
+        mobileContainer.empty();
+        
+        // Update target score displays
         $('#score-panel-target').text(this.targetScore);
+        $('#score-panel-target-mobile').text(this.targetScore);
         
         this.players.forEach((player, index) => {
             const scoreDiv = $(`
@@ -709,7 +714,12 @@ class Flip7Game {
                     </div>
                 </div>
             `);
-            container.append(scoreDiv);
+            
+            // Clone for mobile (same structure, different container)
+            const mobileScoreDiv = scoreDiv.clone(true);
+            
+            desktopContainer.append(scoreDiv);
+            mobileContainer.append(mobileScoreDiv);
         });
         
         this.updateScorePanel();
