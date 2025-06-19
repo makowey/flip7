@@ -12,6 +12,7 @@ class Flip7Game {
         this.flipThreeActive = null; // {playerId, cardsLeft, deferredActions: []}
         this.extraActionCards = []; // Cards that need redistribution
         this.waitingForActionCardResolution = false; // Waiting for player to select action card target
+        this.isInitialDeal = false; // Flag to prevent turn progression during initial deal
         this.currentGameStats = {
             startTime: null,
             endTime: null,
@@ -177,13 +178,10 @@ class Flip7Game {
         $('#clear-log').on('click', () => this.clearGameLog());
         $('#copy-log').on('click', () => this.copyGameLog());
         
-        // Deck click handlers for both desktop and mobile
+        // Deck click handlers for both desktop and mobile - only for card tracker
         $('#deck, #deck-mobile').on('click', (e) => {
-            if (e.ctrlKey || e.metaKey) {
-                this.showCardTracker('deck');
-            } else {
-                this.dealCard();
-            }
+            // Only show card tracker, don't automatically deal cards
+            this.showCardTracker('deck');
         });
         $('#discard-pile, #discard-pile-mobile').on('click', () => this.showCardTracker('discard'));
     }
@@ -660,6 +658,10 @@ class Flip7Game {
     }
     
     initialDeal() {
+        // Set flag to prevent turn progression during initial deal
+        this.isInitialDeal = true;
+        this.addToGameLog(`🏁 Initial deal started - isInitialDeal set to true`, 'info');
+        
         // Deal one card to each player
         let dealIndex = this.dealerIndex;
         
@@ -669,19 +671,24 @@ class Flip7Game {
                 const card = this.drawCard();
                 this.dealCardToPlayer(player.id, card);
                 
-                // Handle action cards during initial deal
-                if (card.type === 'action') {
-                    this.handleActionCard(player.id, card);
-                }
+                // Action cards will be handled in the animation callback, not here
+                // This prevents double handling and allows proper turn progression
             }
             
             dealIndex = (dealIndex + 1) % this.players.length;
         }
         
         this.roundState = 'playing';
-        this.findNextActivePlayer();
-        this.updateDisplay();
-        this.checkAITurn();
+        
+        // Clear initial deal flag and set up first turn after a delay
+        // This allows all animation callbacks to complete before starting gameplay
+        setTimeout(() => {
+            this.addToGameLog(`🏁 Initial deal complete - isInitialDeal set to false`, 'info');
+            this.isInitialDeal = false;
+            this.findNextActivePlayer();
+            this.updateDisplay();
+            this.checkAITurn();
+        }, 1000); // Increased delay to ensure all animations complete
     }
     
     checkAITurn() {
@@ -691,6 +698,8 @@ class Flip7Game {
         if (this.waitingForActionCardResolution) return;
         
         const currentPlayer = this.players[this.currentPlayerIndex];
+        this.addToGameLog(`🔍 checkAITurn: ${currentPlayer.name}, isAI: ${currentPlayer.isAI}, status: ${currentPlayer.status}`, 'info');
+        
         if (currentPlayer && currentPlayer.isAI && currentPlayer.status === 'active') {
             // Add delay for AI decision to make it feel more natural
             setTimeout(() => {
@@ -823,10 +832,31 @@ class Flip7Game {
         }
         this.addToGameLog(`${player.name} drew ${cardDescription}`, 'draw');
         
+        this.addToGameLog(`📤 dealCardToPlayer called for ${this.players.find(p => p.id === playerId).name}`, 'info');
+        
         this.animateCardToDealerArea(playerId, card, () => {
+            this.addToGameLog(`🎯 Animation callback triggered for ${this.players.find(p => p.id === playerId).name}`, 'info');
+            
             this.renderPlayerCards(playerId, true); // Skip animation since we just did the flying effect
             this.calculatePlayerScore(playerId);
             this.processCardEffects(playerId, card);
+            
+            // Check if action card should be handled (only if player didn't bust)
+            const player = this.players.find(p => p.id === playerId);
+            if (card.type === 'action' && player.status === 'active' && this.roundState === 'playing') {
+                this.waitingForActionCardResolution = true;
+                this.handleActionCard(playerId, card);
+                return; // Don't continue turn progression yet
+            }
+            
+            // Continue with turn progression after card is fully positioned 
+            // Only during active gameplay, not during initial deal
+            this.addToGameLog(`🔧 Callback check: roundState=${this.roundState}, isInitialDeal=${this.isInitialDeal}`, 'info');
+            if (this.roundState === 'playing' && !this.isInitialDeal) {
+                this.continueAfterCardProcessing();
+            } else {
+                this.addToGameLog(`🚫 Skipping turn progression during initial deal`, 'info');
+            }
         });
     }
     
@@ -944,6 +974,9 @@ class Flip7Game {
     processCardEffects(playerId, card) {
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
+        
+        // Skip processing if player is already busted (prevents duplicate bust detection)
+        if (player.status === 'busted') return;
         
         // Check for bust condition with number cards
         if (card.type === 'number') {
@@ -1260,6 +1293,8 @@ class Flip7Game {
             this.calculatePlayerScore(targetId);
         }
         
+        let keepCard = false;
+        
         switch (card.value) {
             case 'freeze':
                 targetPlayer.status = 'stayed';
@@ -1282,7 +1317,7 @@ class Flip7Game {
                     this.extraActionCards = this.extraActionCards || [];
                     this.extraActionCards.push({type: 'flip_three', card: card});
                 } else {
-                    this.flipThreeActive = {playerId: targetId, cardsLeft: 3, deferredActions: []};
+                    this.flipThreeActive = {playerId: targetId, cardsLeft: 3, deferredActions: [], flipThreeCard: card};
                     if (sourcePlayerId === targetId) {
                         this.updatePlayerStatus(targetId, 'FLIP THREE! Must take 3 cards 🎲');
                         this.addToGameLog(`${targetPlayer.name} used FLIP THREE on themselves`, 'action');
@@ -1293,28 +1328,33 @@ class Flip7Game {
                     }
                     const playerArea = $(`#player-${targetId}`);
                     playerArea.addClass('flip-three-active');
+                    
+                    // Don't discard the Flip Three card immediately - keep it visible until effect ends
+                    keepCard = true;
                 }
                 break;
         }
         
-        // After effect is applied, remove the action card from target player and discard it
-        if (sourcePlayerId !== targetId) {
-            const cardIndex = targetPlayer.cards.findIndex(c => c.id === card.id);
-            if (cardIndex !== -1) {
-                targetPlayer.cards.splice(cardIndex, 1);
-                this.discardPile.push(card);
-                // Re-render target player's cards to show card was used/discarded
-                this.renderPlayerCards(targetId, true);
-                this.calculatePlayerScore(targetId);
-            }
-        } else {
-            // Playing on self - remove and discard the card
-            const cardIndex = sourcePlayer.cards.findIndex(c => c.id === card.id);
-            if (cardIndex !== -1) {
-                sourcePlayer.cards.splice(cardIndex, 1);
-                this.discardPile.push(card);
-                this.renderPlayerCards(sourcePlayerId, true);
-                this.calculatePlayerScore(sourcePlayerId);
+        // After effect is applied, remove the action card from target player and discard it (unless keeping it)
+        if (!keepCard) {
+            if (sourcePlayerId !== targetId) {
+                const cardIndex = targetPlayer.cards.findIndex(c => c.id === card.id);
+                if (cardIndex !== -1) {
+                    targetPlayer.cards.splice(cardIndex, 1);
+                    this.discardPile.push(card);
+                    // Re-render target player's cards to show card was used/discarded
+                    this.renderPlayerCards(targetId, true);
+                    this.calculatePlayerScore(targetId);
+                }
+            } else {
+                // Playing on self - remove and discard the card
+                const cardIndex = sourcePlayer.cards.findIndex(c => c.id === card.id);
+                if (cardIndex !== -1) {
+                    sourcePlayer.cards.splice(cardIndex, 1);
+                    this.discardPile.push(card);
+                    this.renderPlayerCards(sourcePlayerId, true);
+                    this.calculatePlayerScore(sourcePlayerId);
+                }
             }
         }
         
@@ -1331,9 +1371,16 @@ class Flip7Game {
         }
         
         // Progress to next player after action is resolved and update display
+        // Use a unique timestamp to prevent old timeouts from interfering
+        const actionTimestamp = Date.now();
+        this.lastActionTimestamp = actionTimestamp;
+        
         setTimeout(() => {
-            // Only progress if round hasn't ended and we're still in playing state
-            if (this.roundState === 'playing' && !this.checkRoundEnd()) {
+            // Only progress if this is still the most recent action and round hasn't ended
+            if (this.lastActionTimestamp === actionTimestamp && 
+                this.roundState === 'playing' && 
+                !this.checkRoundEnd()) {
+                this.addToGameLog(`⏰ Action card timeout calling progressTurn`, 'info');
                 this.progressTurn();
             }
             // Update display after action is fully resolved and turn progressed
@@ -1361,19 +1408,39 @@ class Flip7Game {
                 break;
                 
             case 'flip_three':
-                // AI strategy for Flip Three: target opponent with lowest risk of busting
-                const otherActiveIds = activePlayerIds.filter(id => id !== playerId);
-                if (otherActiveIds.length > 0) {
-                    // Target opponent with fewest unique number cards (higher chance of busting)
-                    const targetPlayer = otherActiveIds.map(id => this.players.find(p => p.id === id))
-                        .sort((a, b) => {
-                            const aUniqueNumbers = [...new Set(a.cards.filter(c => c.type === 'number').map(c => c.value))].length;
-                            const bUniqueNumbers = [...new Set(b.cards.filter(c => c.type === 'number').map(c => c.value))].length;
-                            return aUniqueNumbers - bUniqueNumbers;
-                        })[0];
-                    targetId = targetPlayer.id;
+                // Smart AI strategy for Flip Three: decide between self vs opponent
+                const aiNumberCards = sourcePlayer.cards.filter(c => c.type === 'number');
+                const aiUniqueNumbers = [...new Set(aiNumberCards.map(c => c.value))].length;
+                const aiTotalCards = sourcePlayer.cards.length;
+                
+                // Criteria for using Flip Three on self:
+                // 1. AI has 4 or fewer total cards (safe to draw 3 more)
+                // 2. AI has 4-6 unique numbers (good chance to reach Flip 7)
+                // 3. AI doesn't have many duplicates already
+                const shouldUseSelf = (
+                    aiTotalCards <= 4 || // Safe card count
+                    (aiUniqueNumbers >= 4 && aiUniqueNumbers <= 6) || // Good position for Flip 7
+                    (aiUniqueNumbers >= 3 && aiTotalCards <= 5) // Decent position with low risk
+                );
+                
+                if (shouldUseSelf) {
+                    targetId = playerId; // Use on self for strategic advantage
+                    this.addToGameLog(`🧠 ${sourcePlayer.name} strategically uses FLIP THREE on themselves (${aiUniqueNumbers} unique numbers)`, 'action');
                 } else {
-                    targetId = playerId; // Must target self if only active player
+                    // Use on opponent - target one with most cards (higher bust risk)
+                    const otherActiveIds = activePlayerIds.filter(id => id !== playerId);
+                    if (otherActiveIds.length > 0) {
+                        const targetPlayer = otherActiveIds.map(id => this.players.find(p => p.id === id))
+                            .sort((a, b) => {
+                                const aCards = a.cards.length;
+                                const bCards = b.cards.length;
+                                return bCards - aCards; // Target player with most cards
+                            })[0];
+                        targetId = targetPlayer.id;
+                        this.addToGameLog(`🧠 ${sourcePlayer.name} tactically uses FLIP THREE on ${targetPlayer.name} (opponent has ${targetPlayer.cards.length} cards)`, 'action');
+                    } else {
+                        targetId = playerId; // Must target self if only active player
+                    }
                 }
                 break;
         }
@@ -1530,6 +1597,13 @@ class Flip7Game {
             return;
         }
         
+        // Log hit action
+        if (currentPlayer.isAI) {
+            this.addToGameLog(`${currentPlayer.name} chose to HIT`, 'action');
+        } else {
+            this.addToGameLog(`${currentPlayer.name} chose to HIT`, 'action');
+        }
+        
         const card = this.drawCard();
         this.dealCardToPlayer(currentPlayer.id, card);
         
@@ -1538,15 +1612,14 @@ class Flip7Game {
         
         if (wasFlipThreeActive) {
             this.handleFlipThreeCard(currentPlayer.id, card);
-        } else if (card.type === 'action') {
-            // Normal action card handling when not in Flip Three
-            this.waitingForActionCardResolution = true;
-            this.handleActionCard(currentPlayer.id, card);
-            // Don't progress turn yet - wait for action card resolution
-            this.updateDisplay();
-            return;
         }
         
+        // Action cards are now handled in the animation callback after bust detection
+        // Don't progress turn here - it will be handled in continueAfterCardProcessing()
+        // after the card animation is complete
+    }
+    
+    continueAfterCardProcessing() {
         // Check if round should end
         if (this.checkRoundEnd()) {
             this.endRound();
@@ -1554,17 +1627,29 @@ class Flip7Game {
         }
         
         // Progress to next player (only if not waiting for action card resolution)
-        this.progressTurn();
+        if (!this.waitingForActionCardResolution) {
+            this.addToGameLog(`🔄 continueAfterCardProcessing calling progressTurn`, 'info');
+            this.progressTurn();
+        }
     }
     
     progressTurn() {
         // Determine next action based on flip three state
-        if (this.flipThreeActive && this.flipThreeActive.playerId === this.players[this.currentPlayerIndex].id) {
-            // Player must continue flipping - don't change turns
+        if (this.flipThreeActive) {
+            // Someone is in Flip Three - set turn to that player and don't change turns
+            this.currentPlayerIndex = this.players.findIndex(p => p.id === this.flipThreeActive.playerId);
             this.checkAITurn();
         } else {
             // Normal turn progression - move to next player
+            const previousPlayer = this.players[this.currentPlayerIndex];
             this.findNextActivePlayer();
+            const newPlayer = this.players[this.currentPlayerIndex];
+            
+            // Log turn progression for debugging
+            if (previousPlayer.id !== newPlayer.id) {
+                this.addToGameLog(`Turn switches from ${previousPlayer.name} to ${newPlayer.name}`, 'info');
+            }
+            
             this.checkAITurn();
         }
         
@@ -1613,6 +1698,20 @@ class Flip7Game {
     endFlipThree(playerId) {
         const player = this.players.find(p => p.id === playerId);
         const deferredActions = this.flipThreeActive.deferredActions;
+        const flipThreeCard = this.flipThreeActive.flipThreeCard;
+        
+        // Discard the Flip Three card that was used
+        if (flipThreeCard) {
+            this.discardPile.push(flipThreeCard);
+            // Remove the card from the player's hand
+            const cardIndex = player.cards.findIndex(c => c.id === flipThreeCard.id);
+            if (cardIndex !== -1) {
+                player.cards.splice(cardIndex, 1);
+            }
+            // Update UI to reflect the discarded card
+            this.updateCardsRemaining();
+            this.renderPlayerCards(playerId);
+        }
         
         // Clear flip three state
         this.flipThreeActive = null;
@@ -1702,6 +1801,8 @@ class Flip7Game {
         const activePlayers = this.players.filter(p => p.status === 'active');
         const flip7Player = this.players.find(p => p.status === 'flip7');
         
+        // Round ends when NO active players remain OR someone achieves Flip 7
+        // If 1 active player remains, they should continue playing
         return activePlayers.length === 0 || flip7Player !== undefined;
     }
     
