@@ -288,6 +288,39 @@
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
         }
         
+        /* Score panel dark theme support */
+        .dark #score-panel {
+            background-color: var(--bg-secondary) !important;
+        }
+        
+        .dark #score-panel h3 {
+            color: var(--text-primary) !important;
+        }
+        
+        .dark #score-panel .text-gray-600 {
+            color: var(--text-secondary) !important;
+        }
+        
+        /* Scroll highlight animation for mobile auto-scroll */
+        .scroll-highlight {
+            animation: scrollHighlight 2s ease-out;
+        }
+        
+        @keyframes scrollHighlight {
+            0% {
+                box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5);
+                transform: scale(1.02);
+            }
+            50% {
+                box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.3);
+                transform: scale(1.01);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+                transform: scale(1);
+            }
+        }
+        
         .dark .tagline {
             color: #9ca3af;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
@@ -817,6 +850,22 @@
 
         <!-- Game Screen -->
         <div id="game-screen" class="hidden">
+            <!-- Real-time Score Panel -->
+            <div id="score-panel" class="bg-white rounded-lg shadow-lg p-3 md:p-4 mb-4">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-lg font-bold text-gray-800">
+                        <i class="fas fa-chart-line text-green-600 mr-2"></i>
+                        Live Scores
+                    </h3>
+                    <div class="text-sm text-gray-600">
+                        Target: <span id="score-panel-target" class="font-semibold text-purple-600">200</span>
+                    </div>
+                </div>
+                <div id="score-panel-players" class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+                    <!-- Player scores will be dynamically generated -->
+                </div>
+            </div>
+            
             <!-- Game Status -->
             <div class="bg-white rounded-lg shadow-lg p-3 md:p-4 mb-4 md:mb-6">
                 <!-- Mobile Layout -->

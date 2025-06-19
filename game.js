@@ -638,6 +638,7 @@ class Flip7Game {
         
         this.createDeck();
         this.setupPlayersDisplay();
+        this.setupScorePanel();
         this.updateCardsRemaining(); // Initialize counters
         
         // Log game start
@@ -677,6 +678,67 @@ class Flip7Game {
                 </div>
             `);
             container.append(playerDiv);
+        });
+    }
+    
+    setupScorePanel() {
+        const container = $('#score-panel-players');
+        container.empty();
+        
+        // Update target score display
+        $('#score-panel-target').text(this.targetScore);
+        
+        this.players.forEach((player, index) => {
+            const scoreDiv = $(`
+                <div class="score-panel-player bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900 dark:to-indigo-900 p-2 rounded-lg border border-blue-200 dark:border-blue-700">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            ${player.isAI ? '<i class="fas fa-robot text-blue-500 mr-1 text-xs"></i>' : '<i class="fas fa-user text-green-500 mr-1 text-xs"></i>'}
+                            <span class="font-semibold text-sm text-gray-800 dark:text-gray-200 truncate" title="${player.name}">${player.name}</span>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs text-gray-600 dark:text-gray-400">Round</div>
+                            <div class="font-bold text-sm text-blue-600 dark:text-blue-400" id="score-panel-round-${player.id}">0</div>
+                        </div>
+                    </div>
+                    <div class="mt-1 pt-1 border-t border-blue-200 dark:border-blue-700">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-gray-600 dark:text-gray-400">Total</span>
+                            <span class="font-bold text-lg text-purple-600 dark:text-purple-400" id="score-panel-total-${player.id}">0</span>
+                        </div>
+                    </div>
+                </div>
+            `);
+            container.append(scoreDiv);
+        });
+        
+        this.updateScorePanel();
+    }
+    
+    updateScorePanel() {
+        this.players.forEach(player => {
+            $(`#score-panel-round-${player.id}`).text(player.score || 0);
+            $(`#score-panel-total-${player.id}`).text(player.totalScore || 0);
+            
+            // Add visual indicators for current player and status
+            const scoreDiv = $(`.score-panel-player:has(#score-panel-total-${player.id})`);
+            
+            // Reset all status classes
+            scoreDiv.removeClass('ring-2 ring-yellow-400 ring-orange-400 ring-red-400 ring-green-400');
+            
+            // Add current player indicator
+            if (this.currentPlayerIndex >= 0 && this.players[this.currentPlayerIndex].id === player.id && this.roundState === 'playing') {
+                scoreDiv.addClass('ring-2 ring-yellow-400');
+            }
+            
+            // Add status-based styling
+            if (player.status === 'busted') {
+                scoreDiv.addClass('ring-2 ring-red-400');
+            } else if (player.status === 'flip7') {
+                scoreDiv.addClass('ring-2 ring-green-400');
+            } else if (player.status === 'stayed') {
+                scoreDiv.addClass('ring-2 ring-orange-400');
+            }
         });
     }
     
@@ -944,6 +1006,11 @@ class Flip7Game {
             this.renderPlayerCards(playerId, true); // Skip animation since we just did the flying effect
             this.calculatePlayerScore(playerId);
             this.processCardEffects(playerId, card);
+            
+            // Scroll to player on mobile after card is dealt to show the result
+            if (window.innerWidth < 768) {
+                setTimeout(() => this.scrollToActivePlayerOnMobile(), 500);
+            }
             
             // Check if action card should be handled (only if player didn't bust)
             const player = this.players.find(p => p.id === playerId);
@@ -1280,6 +1347,9 @@ class Flip7Game {
         
         player.score = score;
         $(`#score-${playerId}`).text(score);
+        
+        // Update the score panel in real-time
+        this.updateScorePanel();
     }
     
     updatePlayerStatus(playerId, status) {
@@ -1994,6 +2064,9 @@ class Flip7Game {
             $(`#total-${player.id}`).text(player.totalScore);
         });
         
+        // Update score panel with new totals
+        this.updateScorePanel();
+        
         // Log round end with scores
         this.addToGameLog(`🏁 Round ${this.round} ended`, 'round');
         this.players.forEach(player => {
@@ -2259,6 +2332,12 @@ class Flip7Game {
         
         // Update visual states for all player areas
         this.updatePlayerAreaVisuals();
+        
+        // Update score panel to reflect current player and statuses
+        this.updateScorePanel();
+        
+        // Auto-scroll to active player on mobile
+        this.scrollToActivePlayerOnMobile();
     }
     
     getPlayerStatusText(player) {
@@ -2274,6 +2353,39 @@ class Flip7Game {
             default:
                 return '';
         }
+    }
+    
+    scrollToActivePlayerOnMobile() {
+        // Only auto-scroll on mobile devices and during active gameplay
+        if (window.innerWidth >= 768 || this.roundState !== 'playing') {
+            return;
+        }
+        
+        const currentPlayer = this.players[this.currentPlayerIndex];
+        if (!currentPlayer || currentPlayer.status !== 'active') {
+            return;
+        }
+        
+        const playerElement = $(`#player-${currentPlayer.id}`);
+        if (playerElement.length === 0) {
+            return;
+        }
+        
+        // Add a small delay to ensure DOM updates are complete
+        setTimeout(() => {
+            // Smooth scroll to the active player's board
+            playerElement[0].scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+                inline: 'nearest'
+            });
+            
+            // Optional: Add a subtle visual indicator that we've scrolled
+            playerElement.addClass('scroll-highlight');
+            setTimeout(() => {
+                playerElement.removeClass('scroll-highlight');
+            }, 2000);
+        }, 300);
     }
     
     dealCard() {
