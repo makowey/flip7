@@ -22,7 +22,9 @@ class Flip7Game {
         
         this.initializeTheme();
         this.initializeEventListeners();
+        this.loadSavedConfig();
         this.updatePlayerCountInputs();
+        this.initializeSounds();
     }
 
     createDeck() {
@@ -122,12 +124,45 @@ class Flip7Game {
         document.body.classList.toggle('dark', savedTheme === 'dark');
     }
     
+    initializeSounds() {
+        // Load sound enabled state from localStorage
+        this.soundEnabled = localStorage.getItem('flip7-sounds') !== 'false'; // Default to enabled
+        
+        this.sounds = {
+            flipCard: new Audio('sounds/flipcard.mp3')
+        };
+        
+        // Preload sounds
+        Object.values(this.sounds).forEach(audio => {
+            audio.preload = 'auto';
+            audio.volume = 0.3; // Set volume to 30%
+        });
+        
+        // Update UI to reflect current sound state
+        this.updateSoundToggleUI();
+    }
+    
+    playSound(soundName) {
+        try {
+            if (this.soundEnabled && this.sounds && this.sounds[soundName]) {
+                // Reset the audio to beginning in case it's already playing
+                this.sounds[soundName].currentTime = 0;
+                this.sounds[soundName].play().catch(e => {
+                    // Ignore audio play errors (can happen due to browser autoplay policies)
+                    console.log('Audio play prevented:', e);
+                });
+            }
+        } catch (e) {
+            console.log('Audio error:', e);
+        }
+    }
+    
     initializeEventListeners() {
         $('#player-count').on('change', () => this.updatePlayerCountInputs());
+        $('#target-score').on('change', () => this.saveGameConfig());
         $('#start-game').on('click', () => this.startGame());
         $('#hit-button').on('click', () => this.hitPlayer());
         $('#stay-button').on('click', () => this.stayPlayer());
-        $('#new-round').on('click', () => this.startNewRound());
         $('#new-game').on('click', () => this.resetGame());
         $('#play-again').on('click', () => this.resetGame());
         $('#close-modal').on('click', () => this.closeActionModal());
@@ -135,9 +170,12 @@ class Flip7Game {
         $('#close-stats').on('click', () => this.closeStatsModal());
         $('#reset-stats').on('click', () => this.resetStatistics());
         $('#theme-toggle').on('click', () => this.toggleTheme());
+        $('#sound-toggle').on('click', () => this.toggleSound());
         $('#stats-button').on('click', () => this.showStatistics());
         $('#rules-button').on('click', () => this.showRules());
         $('#close-rules').on('click', () => this.closeRulesModal());
+        $('#clear-log').on('click', () => this.clearGameLog());
+        $('#copy-log').on('click', () => this.copyGameLog());
         
         // Deck click handlers for both desktop and mobile
         $('#deck, #deck-mobile').on('click', (e) => {
@@ -154,6 +192,32 @@ class Flip7Game {
         const isDark = document.body.classList.contains('dark');
         document.body.classList.toggle('dark', !isDark);
         localStorage.setItem('flip7-theme', isDark ? 'light' : 'dark');
+    }
+    
+    toggleSound() {
+        this.soundEnabled = !this.soundEnabled;
+        localStorage.setItem('flip7-sounds', this.soundEnabled.toString());
+        this.updateSoundToggleUI();
+        
+        // Play a test sound when enabling (if available)
+        if (this.soundEnabled && this.sounds && this.sounds.flipCard) {
+            this.playSound('flipCard');
+        }
+    }
+    
+    updateSoundToggleUI() {
+        const soundOnIcon = $('#sound-toggle .fa-volume-up');
+        const soundOffIcon = $('#sound-toggle .fa-volume-mute');
+        
+        if (this.soundEnabled) {
+            soundOnIcon.removeClass('hidden');
+            soundOffIcon.addClass('hidden');
+            $('#sound-toggle').attr('title', 'Turn sounds off');
+        } else {
+            soundOnIcon.addClass('hidden');
+            soundOffIcon.removeClass('hidden');
+            $('#sound-toggle').attr('title', 'Turn sounds on');
+        }
     }
     
     getStats() {
@@ -216,10 +280,170 @@ class Flip7Game {
         this.saveStats(stats);
     }
     
+    addToGameLog(message, type = 'info') {
+        const timestamp = new Date().toLocaleTimeString('en-US', { 
+            hour12: false, 
+            hour: '2-digit', 
+            minute: '2-digit',
+            second: '2-digit'
+        });
+        
+        const logContainer = $('#game-log');
+        
+        // Remove the placeholder text if it exists
+        if (logContainer.find('.text-gray-500').length > 0) {
+            logContainer.empty();
+        }
+        
+        // Color coding based on type
+        let colorClass = 'text-gray-700';
+        let icon = 'fas fa-info-circle';
+        
+        switch(type) {
+            case 'draw':
+                colorClass = 'text-blue-600';
+                icon = 'fas fa-hand-point-up';
+                break;
+            case 'action':
+                colorClass = 'text-orange-600';
+                icon = 'fas fa-magic';
+                break;
+            case 'bust':
+                colorClass = 'text-red-600';
+                icon = 'fas fa-bomb';
+                break;
+            case 'stay':
+                colorClass = 'text-indigo-600';
+                icon = 'fas fa-hand-paper';
+                break;
+            case 'round':
+                colorClass = 'text-purple-600';
+                icon = 'fas fa-trophy';
+                break;
+            case 'flip7':
+                colorClass = 'text-green-600';
+                icon = 'fas fa-star';
+                break;
+        }
+        
+        const logEntry = $(`
+            <div class="log-entry py-1 border-b border-gray-200 last:border-b-0">
+                <span class="text-xs text-gray-400">[${timestamp}]</span>
+                <i class="${icon} mr-1 ${colorClass}"></i>
+                <span class="${colorClass}">${message}</span>
+            </div>
+        `);
+        
+        logContainer.append(logEntry);
+        
+        // Auto-scroll to bottom
+        logContainer.scrollTop(logContainer[0].scrollHeight);
+        
+        // Limit to last 50 entries to prevent memory issues
+        const entries = logContainer.find('.log-entry');
+        if (entries.length > 50) {
+            entries.first().remove();
+        }
+    }
+    
+    clearGameLog() {
+        $('#game-log').html('<p class="text-gray-500 italic text-center">Game events will appear here...</p>');
+    }
+    
+    copyGameLog() {
+        const logEntries = $('#game-log .log-entry');
+        if (logEntries.length === 0) {
+            alert('No log entries to copy!');
+            return;
+        }
+        
+        let logText = 'Flip7 Game Log:\n';
+        logText += '================\n\n';
+        
+        logEntries.each(function() {
+            const entry = $(this);
+            const timestamp = entry.find('.text-gray-400').text();
+            const message = entry.find('span').last().text();
+            logText += `${timestamp} ${message}\n`;
+        });
+        
+        navigator.clipboard.writeText(logText).then(() => {
+            // Show temporary success message
+            const copyBtn = $('#copy-log');
+            const originalText = copyBtn.html();
+            copyBtn.html('<i class="fas fa-check mr-1"></i>Copied!');
+            setTimeout(() => {
+                copyBtn.html(originalText);
+            }, 2000);
+        }).catch(() => {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = logText;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            alert('Log copied to clipboard!');
+        });
+    }
+    
+    loadSavedConfig() {
+        const savedConfig = this.getGameConfig();
+        
+        // Load player count and target score
+        $('#player-count').val(savedConfig.playerCount);
+        $('#target-score').val(savedConfig.targetScore);
+    }
+    
+    getGameConfig() {
+        const defaultConfig = {
+            playerCount: 2,
+            targetScore: 200,
+            players: []
+        };
+        
+        try {
+            const saved = localStorage.getItem('flip7-game-config');
+            return saved ? {...defaultConfig, ...JSON.parse(saved)} : defaultConfig;
+        } catch (e) {
+            return defaultConfig;
+        }
+    }
+    
+    saveGameConfig() {
+        const config = {
+            playerCount: parseInt($('#player-count').val()),
+            targetScore: parseInt($('#target-score').val()),
+            players: []
+        };
+        
+        // Save player configurations
+        for (let i = 1; i <= config.playerCount; i++) {
+            const name = $(`#player-name-${i}`).val();
+            const isAI = $(`input[name="player-type-${i}"]:checked`).val() === 'ai';
+            const aiDifficulty = $(`#ai-difficulty-${i}`).val();
+            
+            config.players.push({
+                name: name,
+                isAI: isAI,
+                aiDifficulty: aiDifficulty
+            });
+        }
+        
+        try {
+            localStorage.setItem('flip7-game-config', JSON.stringify(config));
+        } catch (e) {
+            console.warn('Could not save game configuration to localStorage');
+        }
+    }
+    
     updatePlayerCountInputs() {
         const count = parseInt($('#player-count').val());
         const container = $('#player-names');
         container.empty();
+        
+        // Load saved configuration
+        const savedConfig = this.getGameConfig();
         
         // Fancy default player names
         const fancyNames = [
@@ -235,28 +459,34 @@ class Flip7Game {
         container.append('<label class="block text-sm font-medium text-gray-700 mb-2">Player Configuration:</label>');
         
         for (let i = 1; i <= count; i++) {
+            // Use saved config if available, otherwise use defaults
+            const savedPlayer = savedConfig.players[i - 1];
             const defaultName = fancyNames[i - 1] || `Player ${i}`;
+            const playerName = savedPlayer ? savedPlayer.name : defaultName;
+            const isAI = savedPlayer ? savedPlayer.isAI : false;
+            const aiDifficulty = savedPlayer ? savedPlayer.aiDifficulty : 'medium';
+            
             container.append(`
                 <div class="mb-3 p-3 border border-gray-200 rounded-md bg-gray-50">
                     <div class="mb-2">
-                        <input type="text" id="player-name-${i}" placeholder="${defaultName}" value="${defaultName}"
+                        <input type="text" id="player-name-${i}" placeholder="${defaultName}" value="${playerName}"
                                class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div class="flex items-center space-x-4">
                         <label class="flex items-center">
-                            <input type="radio" name="player-type-${i}" value="human" checked
+                            <input type="radio" name="player-type-${i}" value="human" ${!isAI ? 'checked' : ''}
                                    class="mr-2 text-blue-500 focus:ring-blue-500">
                             <span class="text-sm">Human</span>
                         </label>
                         <label class="flex items-center">
-                            <input type="radio" name="player-type-${i}" value="ai"
+                            <input type="radio" name="player-type-${i}" value="ai" ${isAI ? 'checked' : ''}
                                    class="mr-2 text-blue-500 focus:ring-blue-500">
                             <span class="text-sm">AI</span>
                         </label>
-                        <select id="ai-difficulty-${i}" class="ml-2 p-1 text-xs border border-gray-300 rounded hidden">
-                            <option value="easy">Easy</option>
-                            <option value="medium" selected>Medium</option>
-                            <option value="hard">Hard</option>
+                        <select id="ai-difficulty-${i}" class="ml-2 p-1 text-xs border border-gray-300 rounded ${isAI ? '' : 'hidden'}">
+                            <option value="easy" ${aiDifficulty === 'easy' ? 'selected' : ''}>Easy</option>
+                            <option value="medium" ${aiDifficulty === 'medium' ? 'selected' : ''}>Medium</option>
+                            <option value="hard" ${aiDifficulty === 'hard' ? 'selected' : ''}>Hard</option>
                         </select>
                     </div>
                 </div>
@@ -271,10 +501,18 @@ class Flip7Game {
                     difficultySelect.addClass('hidden');
                 }
             });
+            
+            // Save config when player settings change
+            $(`#player-name-${i}`).on('input', () => this.saveGameConfig());
+            $(`input[name="player-type-${i}"]`).on('change', () => this.saveGameConfig());
+            $(`#ai-difficulty-${i}`).on('change', () => this.saveGameConfig());
         }
     }
     
     startGame() {
+        // Save current configuration to localStorage
+        this.saveGameConfig();
+        
         const playerCount = parseInt($('#player-count').val());
         this.targetScore = parseInt($('#target-score').val());
         
@@ -314,9 +552,16 @@ class Flip7Game {
         $('#game-screen').removeClass('hidden');
         $('#display-target-score').text(this.targetScore);
         
+        // Show new game button
+        $('#new-game').removeClass('hidden');
+        
         this.createDeck();
         this.setupPlayersDisplay();
         this.updateCardsRemaining(); // Initialize counters
+        
+        // Log game start
+        this.addToGameLog(`🎮 Game started with ${this.players.length} players (Target: ${this.targetScore} points)`, 'round');
+        
         this.startNewRound();
     }
     
@@ -355,6 +600,7 @@ class Flip7Game {
     }
     
     startNewRound() {
+        
         // Move all cards from players to discard pile before starting new round
         this.players.forEach(player => {
             player.cards.forEach(card => {
@@ -388,9 +634,12 @@ class Flip7Game {
             player.status = 'active';
         });
         
-        // Restore card opacity for all players
+        // Clear visual cards and restore card opacity for all players
         this.players.forEach(player => {
-            $(`#modifier-cards-${player.id} .card, #number-cards-${player.id} .card`).css('opacity', '1');
+            $(`#modifier-cards-${player.id}`).empty();
+            $(`#number-cards-${player.id}`).empty();
+            $(`#score-${player.id}`).text('0');
+            $(`#status-${player.id}`).text('');
         });
         
         this.currentPlayerIndex = this.dealerIndex;
@@ -400,6 +649,9 @@ class Flip7Game {
         
         $('#current-round').text(this.round);
         $('#current-dealer, #current-dealer-mobile').text(this.players[this.dealerIndex].name);
+        
+        // Log round start
+        this.addToGameLog(`🏁 Round ${this.round} started - Dealer: ${this.players[this.dealerIndex].name}`, 'round');
         
         // Update counters to reflect discarded cards
         this.updateCardsRemaining();
@@ -559,6 +811,18 @@ class Flip7Game {
         }
         
         player.cards.push(card);
+        
+        // Log the card draw
+        let cardDescription = '';
+        if (card.type === 'number') {
+            cardDescription = `${card.value}`;
+        } else if (card.type === 'action') {
+            cardDescription = card.value.replace('_', ' ').toUpperCase();
+        } else if (card.type === 'modifier') {
+            cardDescription = card.value;
+        }
+        this.addToGameLog(`${player.name} drew ${cardDescription}`, 'draw');
+        
         this.animateCardToDealerArea(playerId, card, () => {
             this.renderPlayerCards(playerId, true); // Skip animation since we just did the flying effect
             this.calculatePlayerScore(playerId);
@@ -610,15 +874,23 @@ class Flip7Game {
         
         // Create flying card element (face down initially)
         const flyingCard = $('<div class="card card-flying"></div>');
+        
+        // Make card larger on mobile for better visibility
+        const isMobile = window.innerWidth <= 768;
+        const flyingCardWidth = isMobile ? Math.max(deckRect.width, 60) : deckRect.width;
+        const flyingCardHeight = isMobile ? Math.max(deckRect.height, 90) : deckRect.height;
+        
         flyingCard.css({
             left: deckRect.left + 'px',
             top: deckRect.top + 'px',
-            width: deckRect.width + 'px',
-            height: deckRect.height + 'px',
+            width: flyingCardWidth + 'px',
+            height: flyingCardHeight + 'px',
             'background-image': 'url("assets/backside.png")',
             'background-size': 'cover',
             'background-position': 'center',
             'border': '2px solid #333',
+            'box-shadow': '0 4px 8px rgba(0,0,0,0.3)',
+            'z-index': '1000',
             'transform': 'rotate(' + (Math.random() * 10 - 5) + 'deg)'
         });
         
@@ -635,6 +907,9 @@ class Flip7Game {
             
             // Flip card to reveal face after it reaches destination
             setTimeout(() => {
+                // Play card flip sound
+                this.playSound('flipCard');
+                
                 // Update card to show actual card image
                 let imagePath;
                 if (card.type === 'number') {
@@ -683,6 +958,7 @@ class Flip7Game {
                 // Player busted
                 player.status = 'busted';
                 this.updatePlayerStatus(playerId, 'BUSTED! Duplicate number card! 💥');
+                this.addToGameLog(`${player.name} BUSTED with duplicate number card!`, 'bust');
             } else if (values.length !== uniqueValues.length && hasSecondChance) {
                 // Use Second Chance
                 // Remove the duplicate card and second chance card
@@ -698,6 +974,7 @@ class Flip7Game {
                 }
                 
                 this.updatePlayerStatus(playerId, 'Second Chance Used! 🛡️');
+                this.addToGameLog(`${player.name} used SECOND CHANCE to avoid bust!`, 'action');
                 this.renderPlayerCards(playerId);
                 this.calculatePlayerScore(playerId);
                 this.updateCardsRemaining();
@@ -709,15 +986,14 @@ class Flip7Game {
                 player.status = 'flip7';
                 this.currentGameStats.flip7Achieved = true;
                 this.updatePlayerStatus(playerId, 'FLIP 7! +15 Bonus! 🎉');
+                this.addToGameLog(`🎉 ${player.name} achieved FLIP 7! (+15 bonus)`, 'flip7');
                 this.endRound();
                 return;
             }
         }
         
-        // Handle action cards
-        if (card.type === 'action') {
-            this.handleActionCard(playerId, card);
-        }
+        // Action cards are handled in hitPlayer() or during initial deal, not here
+        // This prevents double handling of action cards
     }
     
     renderPlayerCards(playerId, skipAnimation = false) {
@@ -848,16 +1124,13 @@ class Flip7Game {
             } else if (player.status === 'flip7') {
                 playerArea.addClass('stayed'); // Flip 7 players are essentially stayed
             } else if (player.status === 'active') {
-                // Add current-turn glow if it's their turn AND they need to take action
-                const isCurrentPlayer = this.roundState === 'playing' && this.currentPlayerIndex === player.id;
-                const needsAction = isCurrentPlayer && !player.isAI && 
-                                   (this.waitingForActionCardResolution || 
-                                    (!this.waitingForActionCardResolution && !this.flipThreeActive));
+                // Add current-turn glow if it's their turn
+                const isCurrentPlayer = this.roundState === 'playing' && this.players[this.currentPlayerIndex].id === player.id;
                 
-                if (needsAction) {
+                if (isCurrentPlayer) {
                     playerArea.addClass('active current-turn');
                 } else {
-                    // Active but either not current turn, AI player, or no action needed
+                    // Active but not current turn
                     playerArea.addClass('active');
                 }
             }
@@ -878,9 +1151,11 @@ class Flip7Game {
                 const activePlayerIds = this.players.filter(p => p.status === 'active').map(p => p.id);
                 if (activePlayerIds.length === 1) {
                     // Must play on themselves - resolve immediately
+                    this.waitingForActionCardResolution = false; // Ensure this is set properly
                     this.applyActionCardToTarget(playerId, playerId, card);
                 } else {
-                    // Show target selection
+                    // Set waiting flag before showing selection
+                    this.waitingForActionCardResolution = true;
                     this.showActionCardTargetSelection(playerId, card);
                 }
                 break;
@@ -901,6 +1176,8 @@ class Flip7Game {
                         if (!this.checkRoundEnd()) {
                             this.progressTurn();
                         }
+                        // Update display after action is fully resolved
+                        this.updateDisplay();
                     }, 500);
                 }
                 break;
@@ -965,14 +1242,34 @@ class Flip7Game {
         const targetPlayer = this.players.find(p => p.id === targetId);
         const sourcePlayer = this.players.find(p => p.id === sourcePlayerId);
         
+        // Transfer the card from source to target player first
+        if (sourcePlayerId !== targetId) {
+            // Remove card from source player
+            const cardIndex = sourcePlayer.cards.findIndex(c => c.id === card.id);
+            if (cardIndex !== -1) {
+                sourcePlayer.cards.splice(cardIndex, 1);
+            }
+            
+            // Add card to target player temporarily to show it was given to them
+            targetPlayer.cards.push(card);
+            
+            // Re-render both players' cards to show the transfer
+            this.renderPlayerCards(sourcePlayerId, true);
+            this.calculatePlayerScore(sourcePlayerId);
+            this.renderPlayerCards(targetId, false);
+            this.calculatePlayerScore(targetId);
+        }
+        
         switch (card.value) {
             case 'freeze':
                 targetPlayer.status = 'stayed';
                 if (sourcePlayerId === targetId) {
                     this.updatePlayerStatus(targetId, 'FROZEN! ❄️');
+                    this.addToGameLog(`${targetPlayer.name} used FREEZE on themselves`, 'action');
                 } else {
                     this.updatePlayerStatus(sourcePlayerId, `Froze ${targetPlayer.name}! ❄️`);
                     this.updatePlayerStatus(targetId, `FROZEN by ${sourcePlayer.name}! ❄️`);
+                    this.addToGameLog(`${sourcePlayer.name} used FREEZE on ${targetPlayer.name}`, 'action');
                 }
                 break;
                 
@@ -980,6 +1277,7 @@ class Flip7Game {
                 // Check if target is already in flip three
                 if (this.flipThreeActive && this.flipThreeActive.playerId === targetId) {
                     this.updatePlayerStatus(sourcePlayerId, `${targetPlayer.name} already flipping three! Card will be redistributed.`);
+                    this.addToGameLog(`${sourcePlayer.name} tried FLIP THREE on ${targetPlayer.name} (already active)`, 'action');
                     // Store the extra flip three card for redistribution
                     this.extraActionCards = this.extraActionCards || [];
                     this.extraActionCards.push({type: 'flip_three', card: card});
@@ -987,9 +1285,11 @@ class Flip7Game {
                     this.flipThreeActive = {playerId: targetId, cardsLeft: 3, deferredActions: []};
                     if (sourcePlayerId === targetId) {
                         this.updatePlayerStatus(targetId, 'FLIP THREE! Must take 3 cards 🎲');
+                        this.addToGameLog(`${targetPlayer.name} used FLIP THREE on themselves`, 'action');
                     } else {
                         this.updatePlayerStatus(sourcePlayerId, `Made ${targetPlayer.name} flip three! 🎲`);
                         this.updatePlayerStatus(targetId, `FLIP THREE by ${sourcePlayer.name}! Must take 3 cards 🎲`);
+                        this.addToGameLog(`${sourcePlayer.name} used FLIP THREE on ${targetPlayer.name}`, 'action');
                     }
                     const playerArea = $(`#player-${targetId}`);
                     playerArea.addClass('flip-three-active');
@@ -997,9 +1297,32 @@ class Flip7Game {
                 break;
         }
         
-        // Clear waiting state and update display
+        // After effect is applied, remove the action card from target player and discard it
+        if (sourcePlayerId !== targetId) {
+            const cardIndex = targetPlayer.cards.findIndex(c => c.id === card.id);
+            if (cardIndex !== -1) {
+                targetPlayer.cards.splice(cardIndex, 1);
+                this.discardPile.push(card);
+                // Re-render target player's cards to show card was used/discarded
+                this.renderPlayerCards(targetId, true);
+                this.calculatePlayerScore(targetId);
+            }
+        } else {
+            // Playing on self - remove and discard the card
+            const cardIndex = sourcePlayer.cards.findIndex(c => c.id === card.id);
+            if (cardIndex !== -1) {
+                sourcePlayer.cards.splice(cardIndex, 1);
+                this.discardPile.push(card);
+                this.renderPlayerCards(sourcePlayerId, true);
+                this.calculatePlayerScore(sourcePlayerId);
+            }
+        }
+        
+        // Update card counts since cards were discarded
+        this.updateCardsRemaining();
+        
+        // Clear waiting state but don't update display yet
         this.waitingForActionCardResolution = false;
-        this.updateDisplay();
         
         // Check if round should end immediately (e.g., Freeze made last active player inactive)
         if (this.checkRoundEnd()) {
@@ -1007,11 +1330,14 @@ class Flip7Game {
             return;
         }
         
-        // Progress to next player after action is resolved
+        // Progress to next player after action is resolved and update display
         setTimeout(() => {
-            if (!this.checkRoundEnd()) {
+            // Only progress if round hasn't ended and we're still in playing state
+            if (this.roundState === 'playing' && !this.checkRoundEnd()) {
                 this.progressTurn();
             }
+            // Update display after action is fully resolved and turn progressed
+            this.updateDisplay();
         }, 500);
     }
     
@@ -1082,6 +1408,8 @@ class Flip7Game {
                     if (!this.checkRoundEnd()) {
                         this.progressTurn();
                     }
+                    // Update display after action is fully resolved
+                    this.updateDisplay();
                 }, 500);
             });
         } else {
@@ -1102,6 +1430,8 @@ class Flip7Game {
                 if (!this.checkRoundEnd()) {
                     this.progressTurn();
                 }
+                // Update display after action is fully resolved
+                this.updateDisplay();
             }, 500);
         }
     }
@@ -1337,6 +1667,7 @@ class Flip7Game {
         if (currentPlayer.status === 'active') {
             currentPlayer.status = 'stayed';
             this.updatePlayerStatus(currentPlayer.id, 'STAYED 🛑');
+            this.addToGameLog(`${currentPlayer.name} chose to STAY (Score: ${currentPlayer.score})`, 'stay');
         }
         
         if (this.checkRoundEnd()) {
@@ -1361,8 +1692,8 @@ class Flip7Game {
             attempts++;
         }
         
-        // If no active players found, end round
-        if (attempts >= this.players.length) {
+        // If no active players found, end round (but only if not already ended)
+        if (attempts >= this.players.length && this.roundState === 'playing') {
             this.endRound();
         }
     }
@@ -1375,6 +1706,11 @@ class Flip7Game {
     }
     
     endRound() {
+        // Prevent duplicate round endings
+        if (this.roundState === 'ended') {
+            return;
+        }
+        
         this.roundState = 'ended';
         
         // Calculate final scores for the round
@@ -1384,6 +1720,14 @@ class Flip7Game {
             }
             player.totalScore += player.score;
             $(`#total-${player.id}`).text(player.totalScore);
+        });
+        
+        // Log round end with scores
+        this.addToGameLog(`🏁 Round ${this.round} ended`, 'round');
+        this.players.forEach(player => {
+            if (player.score > 0) {
+                this.addToGameLog(`${player.name}: +${player.score} points (Total: ${player.totalScore})`, 'round');
+            }
         });
         
         // Start the round-end animation
@@ -1523,17 +1867,18 @@ class Flip7Game {
         this.currentGameStats.rounds++;
         
         $('#turn-indicator').html(`
-            <p class="font-medium text-green-600">
+            <p class="font-medium text-green-600 mb-3">
                 <i class="fas fa-check-circle mr-2"></i>
                 Round ${this.round - 1} Complete!
             </p>
-            <button id="continue-round" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md font-medium transition-colors">
+            <button id="new-round-inline" class="bg-purple-500 hover:bg-purple-600 text-white px-6 py-2 rounded-md font-medium transition-colors">
                 <i class="fas fa-arrow-right mr-2"></i>
                 Start Round ${this.round}
             </button>
         `);
         
-        $('#continue-round').on('click', () => this.startNewRound());
+        // Add event listener to the inline new round button
+        $('#new-round-inline').on('click', () => this.startNewRound());
     }
     
     endGame() {
@@ -1551,6 +1896,10 @@ class Flip7Game {
         
         // Update statistics
         this.updateStatistics(this.currentGameStats);
+        
+        // Log game end
+        const winner = sortedPlayers[0];
+        this.addToGameLog(`🏆 Game ended! Winner: ${winner.name} (${winner.totalScore} points)`, 'round');
         
         $('#game-screen').addClass('hidden');
         $('#score-screen').removeClass('hidden');
@@ -1923,6 +2272,12 @@ class Flip7Game {
         $('#game-screen').addClass('hidden');
         $('#score-screen').addClass('hidden');
         $('#setup-screen').removeClass('hidden');
+        
+        // Hide new game button when returning to setup
+        $('#new-game').addClass('hidden');
+        
+        // Clear the game log for new game
+        this.clearGameLog();
         
         // Reset all game state
         this.players = [];

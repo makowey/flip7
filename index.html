@@ -465,6 +465,17 @@
             z-index: 1000;
             pointer-events: none;
             transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+            border-radius: 8px;
+        }
+        
+        @media (max-width: 768px) {
+            .card-flying {
+                min-width: 60px;
+                min-height: 90px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+                border: 3px solid #333;
+            }
         }
         
         .card-flying.animate {
@@ -559,6 +570,14 @@
         <header class="text-center mb-4 md:mb-8 relative">
             <!-- Theme Toggle and Settings -->
             <div class="absolute top-0 right-0 flex space-x-2">
+                <button id="new-game" class="hidden p-2 rounded-lg bg-gray-500 hover:bg-gray-600 text-white border-2 border-gray-600 hover:border-gray-700 transition-all shadow-sm text-sm font-medium" title="Start new game">
+                    <i class="fas fa-home mr-1"></i>
+                    New Game
+                </button>
+                <button id="sound-toggle" class="p-3 rounded-lg bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm" title="Toggle sounds">
+                    <i class="fas fa-volume-up text-gray-700 dark:text-gray-300 text-lg"></i>
+                    <i class="fas fa-volume-mute hidden text-red-500 text-lg"></i>
+                </button>
                 <button id="rules-button" class="p-3 rounded-lg bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm" title="View game rules">
                     <i class="fas fa-book text-gray-700 dark:text-gray-300 text-lg"></i>
                 </button>
@@ -747,16 +766,27 @@
                 <!-- Player areas will be dynamically generated -->
             </div>
 
-            <!-- Game Controls -->
-            <div class="text-center mt-6">
-                <button id="new-round" class="bg-purple-500 hover:bg-purple-600 text-white px-6 py-2 rounded-md font-medium transition-colors mr-2">
-                    <i class="fas fa-redo mr-2"></i>
-                    New Round
-                </button>
-                <button id="new-game" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md font-medium transition-colors">
-                    <i class="fas fa-home mr-2"></i>
-                    New Game
-                </button>
+            <!-- Game Log -->
+            <div class="bg-white rounded-lg shadow-lg p-3 md:p-4 mt-4">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-lg font-bold text-gray-800">
+                        <i class="fas fa-scroll text-blue-600 mr-2"></i>
+                        Game Log
+                    </h3>
+                    <div class="flex space-x-2">
+                        <button id="copy-log" class="text-xs bg-blue-400 hover:bg-blue-500 text-white px-2 py-1 rounded transition-colors">
+                            <i class="fas fa-copy mr-1"></i>
+                            Copy
+                        </button>
+                        <button id="clear-log" class="text-xs bg-gray-400 hover:bg-gray-500 text-white px-2 py-1 rounded transition-colors">
+                            <i class="fas fa-trash mr-1"></i>
+                            Clear
+                        </button>
+                    </div>
+                </div>
+                <div id="game-log" class="bg-gray-50 rounded-md p-2 max-h-32 overflow-y-auto text-sm">
+                    <p class="text-gray-500 italic text-center">Game events will appear here...</p>
+                </div>
             </div>
         </div>
 
