@@ -695,22 +695,13 @@ class Flip7Game {
         
         this.players.forEach((player, index) => {
             const scoreDiv = $(`
-                <div class="score-panel-player bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900 dark:to-indigo-900 p-2 rounded-lg border border-blue-200 dark:border-blue-700">
+                <div class="score-panel-player bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900 dark:to-indigo-900 p-3 rounded-lg border border-blue-200 dark:border-blue-700">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center">
-                            ${player.isAI ? '<i class="fas fa-robot text-blue-500 mr-1 text-xs"></i>' : '<i class="fas fa-user text-green-500 mr-1 text-xs"></i>'}
-                            <span class="font-semibold text-sm text-gray-800 dark:text-gray-200 truncate" title="${player.name}">${player.name}</span>
+                            ${player.isAI ? '<i class="fas fa-robot text-blue-500 mr-2 text-sm"></i>' : '<i class="fas fa-user text-green-500 mr-2 text-sm"></i>'}
+                            <span class="font-semibold text-base text-gray-800 dark:text-gray-200 truncate" title="${player.name}">${player.name}</span>
                         </div>
-                        <div class="text-right">
-                            <div class="text-xs text-gray-600 dark:text-gray-400">Round</div>
-                            <div class="font-bold text-sm text-blue-600 dark:text-blue-400" id="score-panel-round-${player.id}">0</div>
-                        </div>
-                    </div>
-                    <div class="mt-1 pt-1 border-t border-blue-200 dark:border-blue-700">
-                        <div class="flex justify-between items-center">
-                            <span class="text-xs text-gray-600 dark:text-gray-400">Total</span>
-                            <span class="font-bold text-lg text-purple-600 dark:text-purple-400" id="score-panel-total-${player.id}">0</span>
-                        </div>
+                        <span class="font-bold text-xl text-purple-600 dark:text-purple-400" id="score-panel-total-${player.id}">0</span>
                     </div>
                 </div>
             `);
@@ -727,8 +718,10 @@ class Flip7Game {
     
     updateScorePanel() {
         this.players.forEach(player => {
-            $(`#score-panel-round-${player.id}`).text(player.score || 0);
-            $(`#score-panel-total-${player.id}`).text(player.totalScore || 0);
+            // Show live running total: previous rounds + current round progress
+            const currentRoundScore = player.status === 'busted' ? 0 : (player.score || 0);
+            const displayScore = (player.totalScore || 0) + currentRoundScore;
+            $(`#score-panel-total-${player.id}`).text(displayScore);
             
             // Add visual indicators for current player and status
             const scoreDiv = $(`.score-panel-player:has(#score-panel-total-${player.id})`);
