@@ -178,6 +178,13 @@ class Flip7Game {
         $('#stats-button').on('click', () => this.showStatistics());
         $('#rules-button').on('click', () => this.showRules());
         $('#close-rules').on('click', () => this.closeRulesModal());
+        
+        // Desktop button variants
+        $('#new-game-desktop').on('click', () => this.resetGame());
+        $('#theme-toggle-desktop').on('click', () => this.toggleTheme());
+        $('#sound-toggle-desktop').on('click', () => this.toggleSound());
+        $('#stats-button-desktop').on('click', () => this.showStatistics());
+        $('#rules-button-desktop').on('click', () => this.showRules());
         $('#clear-log').on('click', () => this.clearGameLog());
         $('#copy-log').on('click', () => this.copyGameLog());
         $('#debug-log-toggle').on('click', () => this.toggleDebugLogs());
