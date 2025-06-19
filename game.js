@@ -14,6 +14,8 @@ class Flip7Game {
         this.waitingForActionCardResolution = false; // Waiting for player to select action card target
         this.isInitialDeal = false; // Flag to prevent turn progression during initial deal
         this.processingCard = false; // Mutex to prevent overlapping card processing
+        this.showDebugLogs = false; // Flag to control detailed debug logging
+        this.gameLogEntries = []; // Store all log entries for filtering
         this.currentGameStats = {
             startTime: null,
             endTime: null,
@@ -178,6 +180,7 @@ class Flip7Game {
         $('#close-rules').on('click', () => this.closeRulesModal());
         $('#clear-log').on('click', () => this.clearGameLog());
         $('#copy-log').on('click', () => this.copyGameLog());
+        $('#debug-log-toggle').on('click', () => this.toggleDebugLogs());
         
         // Deck click handlers for both desktop and mobile - only for card tracker
         $('#deck, #deck-mobile').on('click', (e) => {
@@ -287,6 +290,35 @@ class Flip7Game {
             second: '2-digit'
         });
         
+        // Store all log entries for filtering
+        const logEntry = {
+            message,
+            type,
+            timestamp,
+            isDebug: ['info', 'warning', 'error'].includes(type)
+        };
+        this.gameLogEntries.push(logEntry);
+        
+        // Limit stored entries to prevent memory issues
+        if (this.gameLogEntries.length > 100) {
+            this.gameLogEntries.shift();
+        }
+        
+        // Only show this log entry if it matches current filter mode
+        if (this.shouldShowLogEntry(logEntry)) {
+            this.renderLogEntry(logEntry);
+        }
+    }
+    
+    shouldShowLogEntry(logEntry) {
+        if (this.showDebugLogs) {
+            return true; // Show all logs in debug mode
+        }
+        // In user mode, hide debug logs (info, warning, error)
+        return !logEntry.isDebug;
+    }
+    
+    renderLogEntry(logEntry) {
         const logContainer = $('#game-log');
         
         // Remove the placeholder text if it exists
@@ -298,7 +330,7 @@ class Flip7Game {
         let colorClass = 'text-gray-700';
         let icon = 'fas fa-info-circle';
         
-        switch(type) {
+        switch(logEntry.type) {
             case 'draw':
                 colorClass = 'text-blue-600';
                 icon = 'fas fa-hand-point-up';
@@ -323,29 +355,79 @@ class Flip7Game {
                 colorClass = 'text-green-600';
                 icon = 'fas fa-star';
                 break;
+            case 'info':
+                colorClass = 'text-gray-500';
+                icon = 'fas fa-info-circle';
+                break;
+            case 'warning':
+                colorClass = 'text-yellow-600';
+                icon = 'fas fa-exclamation-triangle';
+                break;
+            case 'error':
+                colorClass = 'text-red-700';
+                icon = 'fas fa-times-circle';
+                break;
         }
         
-        const logEntry = $(`
+        const logElement = $(`
             <div class="log-entry py-1 border-b border-gray-200 last:border-b-0">
-                <span class="text-xs text-gray-400">[${timestamp}]</span>
+                <span class="text-xs text-gray-400">[${logEntry.timestamp}]</span>
                 <i class="${icon} mr-1 ${colorClass}"></i>
-                <span class="${colorClass}">${message}</span>
+                <span class="${colorClass}">${logEntry.message}</span>
             </div>
         `);
         
-        logContainer.append(logEntry);
+        logContainer.append(logElement);
         
         // Auto-scroll to bottom
         logContainer.scrollTop(logContainer[0].scrollHeight);
         
-        // Limit to last 50 entries to prevent memory issues
+        // Limit visible entries to prevent UI lag
         const entries = logContainer.find('.log-entry');
         if (entries.length > 50) {
             entries.first().remove();
         }
     }
     
+    refreshGameLog() {
+        const logContainer = $('#game-log');
+        logContainer.empty();
+        
+        // Re-render all entries that should be shown
+        this.gameLogEntries.forEach(entry => {
+            if (this.shouldShowLogEntry(entry)) {
+                this.renderLogEntry(entry);
+            }
+        });
+        
+        // If no entries to show, add placeholder
+        if (logContainer.children().length === 0) {
+            logContainer.html('<p class="text-gray-500 text-sm">Game log will appear here...</p>');
+        }
+    }
+    
+    toggleDebugLogs() {
+        this.showDebugLogs = !this.showDebugLogs;
+        this.refreshGameLog();
+        
+        // Update button text
+        const button = $('#debug-log-toggle');
+        if (this.showDebugLogs) {
+            button.html('<i class="fas fa-bug mr-1"></i>Debug');
+            button.removeClass('bg-gray-500 hover:bg-gray-600').addClass('bg-orange-500 hover:bg-orange-600');
+        } else {
+            button.html('<i class="fas fa-user mr-1"></i>User');
+            button.removeClass('bg-orange-500 hover:bg-orange-600').addClass('bg-gray-500 hover:bg-gray-600');
+        }
+        
+        this.addToGameLog(`🔧 Log mode: ${this.showDebugLogs ? 'Debug (all logs)' : 'User (important only)'}`, 'info');
+    }
+    
     clearGameLog() {
+        // Clear stored log entries
+        this.gameLogEntries = [];
+        
+        // Clear visual log
         $('#game-log').html('<p class="text-gray-500 italic text-center">Game events will appear here...</p>');
     }
     
@@ -1027,23 +1109,60 @@ class Flip7Game {
                 const duplicateCardIndex = player.cards.findIndex(c => c.type === 'number' && c.value === duplicateValue);
                 const secondChanceIndex = player.cards.findIndex(c => c.type === 'action' && c.value === 'second_chance');
                 
+                this.addToGameLog(`🔍 SECOND CHANCE removal: duplicate at index ${duplicateCardIndex}, second chance at index ${secondChanceIndex}`, 'info');
+                this.addToGameLog(`📋 Player has ${player.cards.length} cards before removal`, 'info');
+                
                 let removedCards = [];
                 if (duplicateCardIndex !== -1) {
                     const removedCard = player.cards.splice(duplicateCardIndex, 1)[0];
                     this.discardPile.push(removedCard);
                     removedCards.push(`${removedCard.value} (duplicate)`);
+                    this.addToGameLog(`✅ Removed duplicate card: ${removedCard.value}`, 'info');
                 }
+                // ALWAYS remove SECOND CHANCE card when used - no matter what!
                 if (secondChanceIndex !== -1) {
                     const removedCard = player.cards.splice(secondChanceIndex, 1)[0];
                     this.discardPile.push(removedCard);
                     removedCards.push('SECOND CHANCE (action card)');
+                    this.addToGameLog(`✅ Removed SECOND CHANCE card: ${removedCard.id}`, 'info');
+                } else {
+                    // If we somehow can't find it by index, force remove any SECOND CHANCE card
+                    this.addToGameLog(`⚠️ SECOND CHANCE not found by index, searching all cards`, 'warning');
+                    const secondChanceCardIndex = player.cards.findIndex(c => c.type === 'action' && c.value === 'second_chance');
+                    if (secondChanceCardIndex !== -1) {
+                        const removedCard = player.cards.splice(secondChanceCardIndex, 1)[0];
+                        this.discardPile.push(removedCard);
+                        removedCards.push('SECOND CHANCE (action card)');
+                        this.addToGameLog(`✅ Force removed SECOND CHANCE card: ${removedCard.id}`, 'info');
+                    } else {
+                        this.addToGameLog(`❌ ERROR: No SECOND CHANCE card found to remove!`, 'error');
+                    }
                 }
+                
+                this.addToGameLog(`📋 Player has ${player.cards.length} cards after removal`, 'info');
                 
                 this.updatePlayerStatus(playerId, 'Second Chance Used! 🛡️');
                 this.addToGameLog(`${player.name} used SECOND CHANCE to avoid bust! Removed: ${removedCards.join(', ')}`, 'action');
-                this.renderPlayerCards(playerId);
+                
+                // FORCE complete visual refresh - SECOND CHANCE MUST disappear from board!
+                this.renderPlayerCards(playerId, true); // Skip animation for immediate update
                 this.calculatePlayerScore(playerId);
                 this.updateCardsRemaining();
+                
+                // Double-check: ensure no SECOND CHANCE cards remain visible
+                const remainingSecondChance = player.cards.filter(c => c.type === 'action' && c.value === 'second_chance');
+                if (remainingSecondChance.length > 0) {
+                    this.addToGameLog(`⚠️ WARNING: ${remainingSecondChance.length} SECOND CHANCE cards still in hand after use!`, 'error');
+                }
+                
+                // Force multiple visual updates to ensure removal is shown
+                setTimeout(() => {
+                    this.renderPlayerCards(playerId, true);
+                    this.calculatePlayerScore(playerId);
+                }, 50);
+                setTimeout(() => {
+                    this.renderPlayerCards(playerId, true);
+                }, 200);
             }
             
             // Check for Flip 7 bonus (only outside of Flip Three - handled separately during Flip Three)
