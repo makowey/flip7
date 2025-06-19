@@ -2031,8 +2031,8 @@ class Flip7Game {
             }
             
             if (currentPlayer.isAI) {
-                // AI player - show thinking message
-                if (this.flipThreeActive && this.flipThreeActive.playerId === currentPlayer.id) {
+                // AI player - show thinking message (only if still active)
+                if (currentPlayer.status === 'active' && this.flipThreeActive && this.flipThreeActive.playerId === currentPlayer.id) {
                     $('#action-buttons').html(`
                         <p class="text-red-600 font-medium">🤖 AI must flip ${this.flipThreeActive.cardsLeft} more cards</p>
                         <p class="text-sm text-gray-600 mt-1">AI is thinking...</p>
@@ -2051,8 +2051,8 @@ class Flip7Game {
                     `);
                 }
             } else {
-                // Human player - show action buttons
-                if (this.flipThreeActive && this.flipThreeActive.playerId === currentPlayer.id) {
+                // Human player - show action buttons (only if still active)
+                if (currentPlayer.status === 'active' && this.flipThreeActive && this.flipThreeActive.playerId === currentPlayer.id) {
                     $('#action-buttons').html(`
                         <p class="text-red-600 font-medium">
                             <i class="fas fa-exclamation-triangle mr-2"></i>
