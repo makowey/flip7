@@ -700,24 +700,72 @@ class Flip7Game {
         $('#score-panel-target').text(this.targetScore);
         $('#score-panel-target-mobile').text(this.targetScore);
         
+        // Create table structure for desktop
+        const desktopTable = $(`
+            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
+                <table class="w-full score-table">
+                    <thead class="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-sm font-semibold">Player</th>
+                            <th class="px-4 py-2 text-right text-sm font-semibold">Score</th>
+                        </tr>
+                    </thead>
+                    <tbody id="score-table-body">
+                    </tbody>
+                </table>
+            </div>
+        `);
+        desktopContainer.append(desktopTable);
+        
+        // Create table structure for mobile
+        const mobileTable = $(`
+            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
+                <table class="w-full score-table">
+                    <thead class="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                            <th class="px-3 py-2 text-left text-sm font-semibold">Player</th>
+                            <th class="px-3 py-2 text-right text-sm font-semibold">Score</th>
+                        </tr>
+                    </thead>
+                    <tbody id="score-table-body-mobile">
+                    </tbody>
+                </table>
+            </div>
+        `);
+        mobileContainer.append(mobileTable);
+        
         this.players.forEach((player, index) => {
-            const scoreDiv = $(`
-                <div class="score-panel-player bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900 dark:to-indigo-900 p-3 rounded-lg border border-blue-200 dark:border-blue-700">
-                    <div class="flex items-center justify-between">
+            // Desktop table row
+            const desktopTableRow = $(`
+                <tr class="score-panel-player border-t border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td class="px-4 py-3">
                         <div class="flex items-center">
-                            ${player.isAI ? '<i class="fas fa-robot text-blue-500 mr-2 text-sm"></i>' : '<i class="fas fa-user text-green-500 mr-2 text-sm"></i>'}
-                            <span class="font-semibold text-base text-gray-800 dark:text-gray-200 truncate" title="${player.name}">${player.name}</span>
+                            ${player.isAI ? '<i class="fas fa-robot text-blue-700 mr-2 text-sm"></i>' : '<i class="fas fa-user text-green-700 mr-2 text-sm"></i>'}
+                            <span class="font-medium">${player.name}</span>
                         </div>
-                        <span class="font-bold text-xl text-purple-600 dark:text-purple-400" id="score-panel-total-${player.id}">0</span>
-                    </div>
-                </div>
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        <span class="font-bold text-lg text-purple-800 dark:text-purple-300" id="score-panel-total-${player.id}">0</span>
+                    </td>
+                </tr>
             `);
+            $('#score-table-body').append(desktopTableRow);
             
-            // Clone for mobile (same structure, different container)
-            const mobileScoreDiv = scoreDiv.clone(true);
-            
-            desktopContainer.append(scoreDiv);
-            mobileContainer.append(mobileScoreDiv);
+            // Mobile table row (same structure, more compact)
+            const mobileTableRow = $(`
+                <tr class="score-panel-player border-t border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td class="px-3 py-2">
+                        <div class="flex items-center">
+                            ${player.isAI ? '<i class="fas fa-robot text-blue-700 mr-2 text-xs"></i>' : '<i class="fas fa-user text-green-700 mr-2 text-xs"></i>'}
+                            <span class="font-medium text-sm truncate" title="${player.name}">${player.name}</span>
+                        </div>
+                    </td>
+                    <td class="px-3 py-2 text-right">
+                        <span class="font-bold text-base text-purple-800 dark:text-purple-300" id="score-panel-total-mobile-${player.id}">0</span>
+                    </td>
+                </tr>
+            `);
+            $('#score-table-body-mobile').append(mobileTableRow);
         });
         
         this.updateScorePanel();
@@ -728,26 +776,31 @@ class Flip7Game {
             // Show live running total: previous rounds + current round progress
             const currentRoundScore = player.status === 'busted' ? 0 : (player.score || 0);
             const displayScore = (player.totalScore || 0) + currentRoundScore;
+            
+            // Update both desktop and mobile score displays
             $(`#score-panel-total-${player.id}`).text(displayScore);
+            $(`#score-panel-total-mobile-${player.id}`).text(displayScore);
             
-            // Add visual indicators for current player and status
-            const scoreDiv = $(`.score-panel-player:has(#score-panel-total-${player.id})`);
+            // Add visual indicators for current player and status (both desktop and mobile)
+            const desktopScoreRow = $(`.score-panel-player:has(#score-panel-total-${player.id})`);
+            const mobileScoreRow = $(`.score-panel-player:has(#score-panel-total-mobile-${player.id})`);
+            const allScoreRows = desktopScoreRow.add(mobileScoreRow);
             
-            // Reset all status classes
-            scoreDiv.removeClass('ring-2 ring-yellow-400 ring-orange-400 ring-red-400 ring-green-400');
+            // Reset all status classes for both desktop and mobile table rows
+            allScoreRows.removeClass('ring-2 ring-yellow-400 ring-orange-400 ring-red-400 ring-green-400 bg-yellow-50 bg-red-50 bg-green-50 bg-orange-50 dark:bg-yellow-900 dark:bg-red-900 dark:bg-green-900 dark:bg-orange-900');
             
             // Add current player indicator
             if (this.currentPlayerIndex >= 0 && this.players[this.currentPlayerIndex].id === player.id && this.roundState === 'playing') {
-                scoreDiv.addClass('ring-2 ring-yellow-400');
+                allScoreRows.addClass('bg-yellow-50 dark:bg-yellow-900');
             }
             
             // Add status-based styling
             if (player.status === 'busted') {
-                scoreDiv.addClass('ring-2 ring-red-400');
+                allScoreRows.addClass('bg-red-50 dark:bg-red-900');
             } else if (player.status === 'flip7') {
-                scoreDiv.addClass('ring-2 ring-green-400');
+                allScoreRows.addClass('bg-green-50 dark:bg-green-900');
             } else if (player.status === 'stayed') {
-                scoreDiv.addClass('ring-2 ring-orange-400');
+                allScoreRows.addClass('bg-orange-50 dark:bg-orange-900');
             }
         });
     }
