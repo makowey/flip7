@@ -424,6 +424,36 @@ label {
     }
 }
 
+/* Beta notice styling */
+.beta-notice {
+    animation: betaGlow 3s ease-in-out infinite;
+}
+
+@keyframes betaGlow {
+    0%, 100% { 
+        box-shadow: 0 0 5px rgba(245, 158, 11, 0.3);
+    }
+    50% { 
+        box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
+    }
+}
+
+.beta-notice:hover {
+    transform: scale(1.02);
+    transition: transform 0.2s ease;
+}
+
+/* Beta notice responsive */
+@media (max-width: 768px) {
+    .beta-notice {
+        margin: 1rem 0.5rem;
+    }
+    
+    .beta-notice .text-sm {
+        font-size: 0.875rem;
+    }
+}
+
 /* Game rules modal dark theme improvements */
 .dark #rules-modal .bg-white {
     background-color: var(--bg-secondary) !important;
