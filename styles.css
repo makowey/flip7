@@ -454,6 +454,83 @@ label {
     }
 }
 
+/* Player board action buttons */
+.player-board-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    justify-content: center;
+}
+
+.player-board-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+    border: 2px solid;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.player-board-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.player-board-btn:active {
+    transform: scale(0.95);
+}
+
+.player-board-btn.hit-btn {
+    background-color: #10b981;
+    border-color: #059669;
+    color: white;
+}
+
+.player-board-btn.hit-btn:hover {
+    background-color: #059669;
+    border-color: #047857;
+}
+
+.player-board-btn.stay-btn {
+    background-color: #3b82f6;
+    border-color: #2563eb;
+    color: white;
+}
+
+.player-board-btn.stay-btn:hover {
+    background-color: #2563eb;
+    border-color: #1d4ed8;
+}
+
+/* Dark theme support for player board buttons */
+.dark .player-board-btn {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.dark .player-board-btn:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Mobile responsive for player board buttons */
+@media (max-width: 768px) {
+    .player-board-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 12px;
+    }
+    
+    .player-board-actions {
+        gap: 6px;
+        margin-top: 6px;
+    }
+}
+
 /* Game rules modal dark theme improvements */
 .dark #rules-modal .bg-white {
     background-color: var(--bg-secondary) !important;

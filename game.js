@@ -189,6 +189,10 @@ class Flip7Game {
         $('#copy-log').on('click', () => this.copyGameLog());
         $('#debug-log-toggle').on('click', () => this.toggleDebugLogs());
         
+        // Player board action buttons - using event delegation
+        $(document).on('click', '.player-board-btn.hit-btn', () => this.hitPlayer());
+        $(document).on('click', '.player-board-btn.stay-btn', () => this.stayPlayer());
+        
         // Deck click handlers for both desktop and mobile - only for card tracker
         $('#deck, #deck-mobile').on('click', (e) => {
             // Only show card tracker, don't automatically deal cards
@@ -682,6 +686,16 @@ class Flip7Game {
                     </div>
                     
                     <div id="status-${player.id}" class="mt-2 text-sm font-medium"></div>
+                    
+                    <!-- Player Board Action Buttons -->
+                    <div id="player-actions-${player.id}" class="player-board-actions" style="display: none;">
+                        <button class="player-board-btn hit-btn" title="Hit - Draw a card">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button class="player-board-btn stay-btn" title="Stay - End your turn">
+                            <i class="fas fa-hand-paper"></i>
+                        </button>
+                    </div>
                 </div>
             `);
             container.append(playerDiv);
@@ -2387,6 +2401,39 @@ class Flip7Game {
                 }
             }
         }
+        
+        // Update player board action buttons
+        this.players.forEach(player => {
+            const playerActions = $(`#player-actions-${player.id}`);
+            
+            // Hide all player board buttons first
+            playerActions.hide();
+            
+            // Show buttons only for active human player
+            if (!player.isAI && player.status === 'active' && 
+                this.currentPlayerIndex >= 0 && 
+                this.players[this.currentPlayerIndex].id === player.id) {
+                
+                if (this.flipThreeActive && this.flipThreeActive.playerId === player.id) {
+                    // During Flip Three, show only hit button
+                    playerActions.html(`
+                        <button class="player-board-btn hit-btn" title="Draw card (Flip Three: ${this.flipThreeActive.cardsLeft} left)">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    `).show();
+                } else {
+                    // Normal turn, show both buttons
+                    playerActions.html(`
+                        <button class="player-board-btn hit-btn" title="Hit - Draw a card">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button class="player-board-btn stay-btn" title="Stay - End your turn">
+                            <i class="fas fa-hand-paper"></i>
+                        </button>
+                    `).show();
+                }
+            }
+        });
         
         // Update player areas
         this.players.forEach(player => {
