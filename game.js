@@ -719,12 +719,12 @@ class Flip7Game {
         
         // Create table structure for mobile
         const mobileTable = $(`
-            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
-                <table class="w-full score-table">
+            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden w-full">
+                <table class="score-table">
                     <thead class="bg-gray-50 dark:bg-gray-700">
                         <tr>
-                            <th class="px-3 py-2 text-left text-sm font-semibold">Player</th>
-                            <th class="px-3 py-2 text-right text-sm font-semibold">Score</th>
+                            <th class="text-left font-semibold">Player</th>
+                            <th class="text-right font-semibold">Score</th>
                         </tr>
                     </thead>
                     <tbody id="score-table-body-mobile">
@@ -740,28 +740,28 @@ class Flip7Game {
                 <tr class="score-panel-player border-t border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td class="px-4 py-3">
                         <div class="flex items-center">
-                            ${player.isAI ? '<i class="fas fa-robot text-blue-700 mr-2 text-sm"></i>' : '<i class="fas fa-user text-green-700 mr-2 text-sm"></i>'}
-                            <span class="font-medium">${player.name}</span>
+                            ${player.isAI ? '<i class="fas fa-robot mr-2 text-sm"></i>' : '<i class="fas fa-user mr-2 text-sm"></i>'}
+                            <span class="font-medium" style="color: inherit;">${player.name}</span>
                         </div>
                     </td>
                     <td class="px-4 py-3 text-right">
-                        <span class="font-bold text-lg text-purple-800 dark:text-purple-300" id="score-panel-total-${player.id}">0</span>
+                        <span class="font-bold text-lg" id="score-panel-total-${player.id}" style="color: inherit;">0</span>
                     </td>
                 </tr>
             `);
             $('#score-table-body').append(desktopTableRow);
             
-            // Mobile table row (same structure, more compact)
+            // Mobile table row (optimized for small screens)
             const mobileTableRow = $(`
                 <tr class="score-panel-player border-t border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td class="px-3 py-2">
-                        <div class="flex items-center">
-                            ${player.isAI ? '<i class="fas fa-robot text-blue-700 mr-2 text-xs"></i>' : '<i class="fas fa-user text-green-700 mr-2 text-xs"></i>'}
-                            <span class="font-medium text-sm truncate" title="${player.name}">${player.name}</span>
+                    <td style="padding: 8px 6px;">
+                        <div class="flex items-center min-w-0">
+                            ${player.isAI ? '<i class="fas fa-robot flex-shrink-0"></i>' : '<i class="fas fa-user flex-shrink-0"></i>'}
+                            <span class="font-medium truncate" title="${player.name}" style="margin-left: 6px; min-width: 0; flex: 1;">${player.name}</span>
                         </div>
                     </td>
-                    <td class="px-3 py-2 text-right">
-                        <span class="font-bold text-base text-purple-800 dark:text-purple-300" id="score-panel-total-mobile-${player.id}">0</span>
+                    <td class="text-right" style="padding: 8px 6px;">
+                        <span class="font-bold" id="score-panel-total-mobile-${player.id}">0</span>
                     </td>
                 </tr>
             `);

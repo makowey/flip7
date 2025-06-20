@@ -37,27 +37,112 @@ body {
     color: var(--text-primary) !important;
 }
 
-/* Score table specific contrast improvements */
+/* Score table - simple light vs dark approach */
+.score-table {
+    background-color: white !important;
+}
+
+.dark .score-table {
+    background-color: #1f2937 !important;
+}
+
+/* Light theme - dark text on light background */
 .score-table th,
-.score-table td {
-    color: var(--text-primary) !important;
+.score-table td,
+.score-table span,
+.score-table .font-medium,
+.score-table .font-bold {
+    color: #111827 !important; /* Dark text for light theme */
 }
 
-.score-table th {
-    font-weight: 600;
-    color: #111827 !important; /* Darker text for headers in light theme */
+.score-table i.fas {
+    color: #374151 !important; /* Darker icons for light theme */
 }
 
-.dark .score-table th {
-    color: #f3f4f6 !important; /* Lighter text for headers in dark theme */
+/* Dark theme - light text on dark background */
+.dark .score-table th,
+.dark .score-table td,
+.dark .score-table span,
+.dark .score-table .font-medium,
+.dark .score-table .font-bold {
+    color: #f9fafb !important; /* Light text for dark theme */
 }
 
-.score-table td {
-    color: #1f2937 !important; /* Darker text for table data in light theme */
+.dark .score-table i.fas {
+    color: #d1d5db !important; /* Lighter icons for dark theme */
 }
 
-.dark .score-table td {
-    color: #e5e7eb !important; /* Lighter text for table data in dark theme */
+/* Table headers */
+.score-table thead {
+    background-color: #f9fafb !important;
+}
+
+.dark .score-table thead {
+    background-color: #374151 !important;
+}
+
+/* Ensure player names are visible */
+.score-table .font-medium {
+    display: inline-block !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+}
+
+/* Mobile score table improvements */
+@media (max-width: 768px) {
+    .score-table {
+        width: 100% !important;
+        table-layout: fixed;
+    }
+    
+    .score-table th:first-child,
+    .score-table td:first-child {
+        width: 65%;
+        min-width: 0;
+    }
+    
+    .score-table th:last-child,
+    .score-table td:last-child {
+        width: 35%;
+        text-align: right;
+    }
+    
+    .score-table th,
+    .score-table td {
+        padding: 8px 6px !important;
+        font-size: 14px !important;
+        line-height: 1.3;
+        overflow: hidden;
+    }
+    
+    /* Better text truncation for mobile */
+    .score-table .truncate {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+        flex: 1;
+    }
+    
+    /* Ensure icons and text are properly sized on mobile */
+    .score-table i {
+        font-size: 12px !important;
+        margin-right: 6px !important;
+        flex-shrink: 0;
+    }
+    
+    .score-table .font-bold {
+        font-size: 16px !important;
+        font-weight: 700;
+    }
+    
+    /* Mobile flex container */
+    .score-table .flex {
+        display: flex !important;
+        align-items: center !important;
+        min-width: 0 !important;
+        gap: 4px;
+    }
 }
 
 .border-gray-300 {
